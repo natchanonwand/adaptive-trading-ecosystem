@@ -39,3 +39,39 @@ next-env.d.ts
 *.db
 data/raw/
 logs/
+
+# Python / uv / development caches
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.hypothesis/
+.mypy_cache/
+.ruff_cache/
+.cache/
+.tools/
+dist/
+*.egg-info/
+.coverage
+htmlcov/
+
+# Secrets and local configuration (template is intentionally safe)
+.env*
+!.env.example
+*.key
+*.p12
+*.pfx
+*.credentials*
+secrets/
+.pgpass
+pgpass.conf
+.pg_service.conf
+pg_service.conf
+
+# Local database state, exports and test output
+.local/
+*.sqlite*
+*.dump
+*.sql
+*.log
+test-results/

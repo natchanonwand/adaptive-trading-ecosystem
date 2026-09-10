@@ -1,0 +1,46 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "trading-ecosystem"
+version = "0.1.0"
+description = "Phase 1 contracts and safe foundations; no trading execution"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "pydantic>=2.11,<3",
+  "sqlalchemy>=2.0.40,<2.1",
+  "alembic>=1.15,<2",
+  "psycopg[binary]>=3.2,<4",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=8.3,<10",
+  "hypothesis>=6.130,<7",
+  "ruff>=0.11,<1",
+  "mypy>=1.15,<2",
+  "pre-commit>=4.2,<5",
+  "detect-secrets>=1.5,<2",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["src", "tests", "migrations", "scripts"]
+plugins = ["pydantic.mypy"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+markers = ["integration: requires a dedicated fresh PostgreSQL test database"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/trading_ecosystem"]
