@@ -75,3 +75,6 @@ pg_service.conf
 *.sql
 *.log
 test-results/
+
+# Local Phase 2A discovery evidence; only synthetic fixtures may be committed
+data/discovery/

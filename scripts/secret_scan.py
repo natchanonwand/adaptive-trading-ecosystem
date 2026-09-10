@@ -22,7 +22,7 @@ def main() -> int:
         for name in files
         if (Path(name).name.startswith(".env") and Path(name).name != ".env.example")
         or Path(name).suffix in {".key", ".pem", ".p12", ".pfx", ".dump", ".db"}
-        or name.startswith((".local/", "secrets/"))
+        or name.startswith((".local/", "secrets/", "data/discovery/"))
     ]
     # The package's CLI is used as a subprocess to avoid importing unstable internals.
     command = [

@@ -1,8 +1,19 @@
 # Adaptive Trading & Portfolio Monitoring Ecosystem
 
-Phase 1 implements contracts and safe foundations only. The owner-approved [spec-v0.1.0 baseline](docs/PRODUCT_SPEC.md) remains authoritative. There is no trading strategy, risk-engine behavior, broker integration, market-data ingestion, web application, or live execution. All entry permission decisions are disabled, including when another declared runtime mode is selected.
+Current work includes the owner-authorized **Phase 2A read-only MT5 discovery** layer after `phase1-v0.1.0`. See [discovery specification](docs/PHASE2A_DISCOVERY_SPEC.md) and [Phase 2A report](PHASE2A_REPORT.md). The Phase 1 foundation below remains in place; the sole broker-package exception is the optional Windows discovery extra. No trading capability or Phase 2B ingestion is implemented.
 
-See [ADR-001](docs/ADR-001-runtime-storage.md) for decisions and [PHASE1_REPORT.md](PHASE1_REPORT.md) for verification and limitations. Phase 2 requires separate owner authorization.
+To repeat discovery against the currently connected **DEMO** terminal:
+
+```powershell
+uv sync --locked --extra discovery
+uv run --locked --extra discovery python -m trading_ecosystem.discovery
+```
+
+The command hard-fails on a non-DEMO/disconnected account, takes no credentials, and writes only allowlisted local summaries to ignored `data/discovery/`. It may select symbols in Market Watch, as explicitly authorized. All mappings remain BLOCKED pending owner approval. Use `--catalog-only` for identity/catalog/metadata without historical probes. Run `scripts/verify_phase2a.ps1` with the isolated PostgreSQL test environment described below to verify the combined Phase 1/2A suite. It does not query MT5 during automated tests.
+
+Phase 1 implements contracts and safe foundations only. The owner-approved [spec-v0.1.0 baseline](docs/PRODUCT_SPEC.md) remains authoritative. There is no trading strategy, risk-engine behavior, broker execution integration, market-data ingestion, web application, or live execution. All entry permission decisions are disabled, including when another declared runtime mode is selected.
+
+See [ADR-001](docs/ADR-001-runtime-storage.md) for decisions and the frozen [PHASE1_REPORT.md](PHASE1_REPORT.md) for Phase 1 evidence and limitations. Authorization has since been granted only for Phase 2A; Phase 2B requires separate owner authorization.
 
 ## Development setup (Windows 11 / PowerShell)
 
