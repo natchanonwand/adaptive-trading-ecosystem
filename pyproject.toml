@@ -9,6 +9,8 @@ description = "Phase 1 contracts and safe foundations; no trading execution"
 requires-python = ">=3.12,<3.13"
 dependencies = [
   "pydantic>=2.11,<3",
+  "pyarrow==21.0.0",
+  "pyarrow-stubs==20.0.0.20250825",
   "sqlalchemy>=2.0.40,<2.1",
   "alembic>=1.15,<2",
   "psycopg[binary]>=3.2,<4",

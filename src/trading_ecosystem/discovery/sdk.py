@@ -94,7 +94,20 @@ class NativeSdk:
         if rows is None:
             return None
         return tuple(
-            {name: row[name] for name in ("time", "open", "high", "low", "close")} for row in rows
+            {
+                name: row[name]
+                for name in (
+                    "time",
+                    "open",
+                    "high",
+                    "low",
+                    "close",
+                    "tick_volume",
+                    "spread",
+                    "real_volume",
+                )
+            }
+            for row in rows
         )
 
     def copy_ticks_range(

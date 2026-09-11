@@ -13,6 +13,8 @@ from trading_ecosystem.discovery.contracts import (
     DemoRequired,
     DiscoveryError,
     DiscoveryPlan,
+    H1Batch,
+    H1Observation,
     Instrument,
     InstrumentMetadata,
     IntegerMetadata,
@@ -184,6 +186,44 @@ class Mt5ReadOnlyProvider:
                     )
                 )
         return BarBatch(rows=tuple(rows), malformed_time_count=malformed)
+
+    def get_h1_bars(self, symbol: str, start: datetime, end: datetime) -> H1Batch:
+        """Strict dataset path preserves every row, including malformed/outside times."""
+        from trading_ecosystem.datasets.contracts import MAPPINGS, Window
+
+        Window(requested_start=start, requested_end=end)
+        if symbol not in MAPPINGS.values():
+            raise DiscoveryError("UNAPPROVED_SYMBOL")
+        start, end = self._interval(start, end, timedelta(days=31))
+        identity = self.get_provider_identity()
+        if identity.company != "Exness Technologies Ltd" or identity.server != "Exness-MT5Trial14":
+            raise DiscoveryError("BROKER_REFERENCE_MISMATCH")
+        self._select(symbol)
+        raw = self._sdk.copy_rates_range(symbol, start, end - timedelta(milliseconds=1))
+        identity = self.get_provider_identity()
+        if identity.company != "Exness Technologies Ltd" or identity.server != "Exness-MT5Trial14":
+            raise DiscoveryError("BROKER_REFERENCE_MISMATCH")
+        if raw is None:
+            return H1Batch(rows=(), error="SDK_EMPTY_OR_UNAVAILABLE")
+        rows = []
+        for row in raw:
+            try:
+                time, _ = source_time(row)
+            except (ValueError, OverflowError):
+                time = None
+            rows.append(
+                H1Observation(
+                    time=time,
+                    open=source_decimal(row.get("open")),
+                    high=source_decimal(row.get("high")),
+                    low=source_decimal(row.get("low")),
+                    close=source_decimal(row.get("close")),
+                    tick_volume=source_integer(row.get("tick_volume")),
+                    spread_points=source_integer(row.get("spread")),
+                    real_volume=source_integer(row.get("real_volume")),
+                )
+            )
+        return H1Batch(rows=tuple(rows))
 
     def get_ticks(self, symbol: str, start: datetime, end: datetime) -> TickBatch:
         start, end = self._interval(start, end, timedelta(hours=1))

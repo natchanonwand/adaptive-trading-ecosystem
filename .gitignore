@@ -78,3 +78,6 @@ test-results/
 
 # Local Phase 2A discovery evidence; only synthetic fixtures may be committed
 data/discovery/
+
+# Immutable local Phase 2B evidence
+data/datasets/

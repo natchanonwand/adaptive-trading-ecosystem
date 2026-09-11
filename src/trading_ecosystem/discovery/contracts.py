@@ -101,6 +101,22 @@ class BarObservation(FrozenModel):
         )
 
 
+class H1Observation(FrozenModel):
+    time: UtcTimestamp | None
+    open: Money | None
+    high: Money | None
+    low: Money | None
+    close: Money | None
+    tick_volume: int | None
+    spread_points: int | None
+    real_volume: int | None
+
+
+class H1Batch(FrozenModel):
+    rows: tuple[H1Observation, ...]
+    error: Literal["SDK_EMPTY_OR_UNAVAILABLE"] | None = None
+
+
 class TickObservation(FrozenModel):
     time: UtcTimestamp
     bid: Money | None
