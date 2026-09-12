@@ -1,9 +1,35 @@
 """Scan tracked + nonignored untracked files without printing detected values."""
 
 import json
+import re
 import subprocess
 import sys
+from collections.abc import Mapping
 from pathlib import Path
+
+
+def verified_registry_digest(name: str, finding: Mapping[str, object]) -> bool:
+    """Allow only digest lines in the exact, independently verified source registry."""
+    if name.replace("\\", "/") != "research/benchmark_registry_v0.1.0.json":
+        return False
+    if finding.get("type") != "Hex High Entropy String":
+        return False
+    index = finding.get("line_number")
+    if not isinstance(index, int) or index < 1:
+        return False
+    from trading_ecosystem.benchmarks.hashing import ARTIFACT_PATH, verify_artifact
+
+    try:
+        verify_artifact()
+        line = ARTIFACT_PATH.read_text(encoding="utf-8").splitlines()[index - 1]
+    except (OSError, ValueError, IndexError):
+        return False
+    return (
+        re.fullmatch(
+            r'\s*"(?:benchmark_definition_sha256|registry_sha256)": "[0-9a-f]{64}",?', line
+        )
+        is not None
+    )
 
 
 def main() -> int:
@@ -43,6 +69,11 @@ def main() -> int:
         print("FAIL: secret scanner could not complete (details suppressed)")
         return 1
     findings = json.loads(completed.stdout).get("results", {})
+    findings = {
+        name: remaining
+        for name, items in findings.items()
+        if (remaining := [item for item in items if not verified_registry_digest(name, item)])
+    }
     if blocked or findings:
         for name in blocked:
             print(f"FAIL: forbidden sensitive file tracked: {name}")

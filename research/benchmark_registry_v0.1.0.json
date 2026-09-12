@@ -1,0 +1,257 @@
+{
+  "definitions": [
+    {
+      "averaging_down": false,
+      "benchmark_definition_sha256": "6bf5cf8370e0150ec8f8043b4ff74c2a12ed6e44508ba8ac0108d3996cd87788",
+      "benchmark_id": "B01_LEGACY_HYBRID_V0",
+      "decision_timing": {
+        "data_cutoff": "AVAILABLE_BY_DECISION_TIME",
+        "decision_time": "BAR_CLOSE_TIME",
+        "evaluation": "COMPLETED_H1_BAR_ONLY",
+        "future_execution": "STRICTLY_AFTER_DECISION_TIME",
+        "same_close_fill_allowed": false
+      },
+      "direction": "LONG_ONLY",
+      "entry_rule": {
+        "comparison": "STRICT",
+        "current_high_excluded": true,
+        "fast_ema_period": 50,
+        "kind": "HYBRID_TREND_AND_BREAKOUT",
+        "previous_high_period": 20,
+        "slow_ema_period": 200
+      },
+      "exit_rule": {
+        "current_low_excluded": true,
+        "kind": "NONE",
+        "normal_exits": [
+          "STOP_LOSS",
+          "TAKE_PROFIT"
+        ],
+        "previous_low_period": null
+      },
+      "family": "LEGACY_HYBRID",
+      "gap_policy": "CONTINUE_OVER_OBSERVED_BARS_WITHOUT_FILLING",
+      "kernel_semantics": "phase3.1-v0.1.0",
+      "literature_replication": false,
+      "optimized": false,
+      "origin_category": "PROJECT_LEGACY_HYPOTHESIS",
+      "profitability_known": false,
+      "protective_stop": {
+        "atr_multiple": 2,
+        "atr_period": 14,
+        "atr_type": "WILDER",
+        "fixed_after_entry": true,
+        "reference": "SIGNAL_CLOSE_MINUS_MULTIPLE_ATR",
+        "tick_rounding": "DEFERRED_INSTRUMENT_POLICY"
+      },
+      "pyramiding": false,
+      "qualification_eligible": false,
+      "required_observations": 250,
+      "research_classification": "EXPLORATORY_RESEARCH_ONLY",
+      "research_status": "PREREGISTERED_EXPLORATORY_BENCHMARK",
+      "same_bar_reentry": false,
+      "schema_version": "benchmark-definition-v0.1.0",
+      "short_support": false,
+      "take_profit": {
+        "initial_price_risk_basis": "ACTUAL_SIMULATED_ENTRY_FILL_MINUS_FIXED_STOP",
+        "kind": "FIXED_PRICE_R_MULTIPLE",
+        "r_multiple": 2,
+        "target_basis": "ACTUAL_SIMULATED_ENTRY_FILL_PLUS_R_MULTIPLE_OF_INITIAL_PRICE_RISK"
+      },
+      "time_basis": "H1_OBSERVED_BAR",
+      "trailing_stop": false
+    },
+    {
+      "averaging_down": false,
+      "benchmark_definition_sha256": "c59688b393e6853f7d8eff0727a03f4c516641b5af181a8916356fa50cb31903",
+      "benchmark_id": "B02_EMA_TREND_50_200",
+      "decision_timing": {
+        "data_cutoff": "AVAILABLE_BY_DECISION_TIME",
+        "decision_time": "BAR_CLOSE_TIME",
+        "evaluation": "COMPLETED_H1_BAR_ONLY",
+        "future_execution": "STRICTLY_AFTER_DECISION_TIME",
+        "same_close_fill_allowed": false
+      },
+      "direction": "LONG_ONLY",
+      "entry_rule": {
+        "comparison": "STRICT",
+        "current_high_excluded": true,
+        "fast_ema_period": 50,
+        "kind": "BULLISH_EMA_CROSS",
+        "previous_high_period": null,
+        "slow_ema_period": 200
+      },
+      "exit_rule": {
+        "current_low_excluded": true,
+        "kind": "BEARISH_OR_EQUAL_EMA_CROSS",
+        "normal_exits": [
+          "PROTECTIVE_STOP",
+          "TREND_EXIT"
+        ],
+        "previous_low_period": null
+      },
+      "family": "MOVING_AVERAGE_TREND",
+      "gap_policy": "CONTINUE_OVER_OBSERVED_BARS_WITHOUT_FILLING",
+      "kernel_semantics": "phase3.1-v0.1.0",
+      "literature_replication": false,
+      "optimized": false,
+      "origin_category": "MOVING_AVERAGE_TREND_BENCHMARK",
+      "profitability_known": false,
+      "protective_stop": {
+        "atr_multiple": 2,
+        "atr_period": 14,
+        "atr_type": "WILDER",
+        "fixed_after_entry": true,
+        "reference": "SIGNAL_CLOSE_MINUS_MULTIPLE_ATR",
+        "tick_rounding": "DEFERRED_INSTRUMENT_POLICY"
+      },
+      "pyramiding": false,
+      "qualification_eligible": false,
+      "required_observations": 201,
+      "research_classification": "EXPLORATORY_RESEARCH_ONLY",
+      "research_status": "PREREGISTERED_EXPLORATORY_BENCHMARK",
+      "same_bar_reentry": false,
+      "schema_version": "benchmark-definition-v0.1.0",
+      "short_support": false,
+      "take_profit": {
+        "initial_price_risk_basis": null,
+        "kind": "NONE",
+        "r_multiple": null,
+        "target_basis": null
+      },
+      "time_basis": "H1_OBSERVED_BAR",
+      "trailing_stop": false
+    },
+    {
+      "averaging_down": false,
+      "benchmark_definition_sha256": "73c73947b7a11d80e7d94f70774f8b7f4867734e5342cdf4ebf3af6e9fdb826d",
+      "benchmark_id": "B03_CHANNEL_20_10",
+      "decision_timing": {
+        "data_cutoff": "AVAILABLE_BY_DECISION_TIME",
+        "decision_time": "BAR_CLOSE_TIME",
+        "evaluation": "COMPLETED_H1_BAR_ONLY",
+        "future_execution": "STRICTLY_AFTER_DECISION_TIME",
+        "same_close_fill_allowed": false
+      },
+      "direction": "LONG_ONLY",
+      "entry_rule": {
+        "comparison": "STRICT",
+        "current_high_excluded": true,
+        "fast_ema_period": null,
+        "kind": "CHANNEL_BREAKOUT",
+        "previous_high_period": 20,
+        "slow_ema_period": null
+      },
+      "exit_rule": {
+        "current_low_excluded": true,
+        "kind": "CHANNEL_EXIT",
+        "normal_exits": [
+          "PROTECTIVE_STOP",
+          "CHANNEL_EXIT"
+        ],
+        "previous_low_period": 10
+      },
+      "family": "CHANNEL_TREND",
+      "gap_policy": "CONTINUE_OVER_OBSERVED_BARS_WITHOUT_FILLING",
+      "kernel_semantics": "phase3.1-v0.1.0",
+      "literature_replication": false,
+      "optimized": false,
+      "origin_category": "CHANNEL_TREND_BENCHMARK",
+      "profitability_known": false,
+      "protective_stop": {
+        "atr_multiple": 2,
+        "atr_period": 14,
+        "atr_type": "WILDER",
+        "fixed_after_entry": true,
+        "reference": "SIGNAL_CLOSE_MINUS_MULTIPLE_ATR",
+        "tick_rounding": "DEFERRED_INSTRUMENT_POLICY"
+      },
+      "pyramiding": false,
+      "qualification_eligible": false,
+      "required_observations": 21,
+      "research_classification": "EXPLORATORY_RESEARCH_ONLY",
+      "research_status": "PREREGISTERED_EXPLORATORY_BENCHMARK",
+      "same_bar_reentry": false,
+      "schema_version": "benchmark-definition-v0.1.0",
+      "short_support": false,
+      "take_profit": {
+        "initial_price_risk_basis": null,
+        "kind": "NONE",
+        "r_multiple": null,
+        "target_basis": null
+      },
+      "time_basis": "H1_OBSERVED_BAR",
+      "trailing_stop": false
+    },
+    {
+      "averaging_down": false,
+      "benchmark_definition_sha256": "ca7ac6a914593e93a43b546ffeea9917977d081d686e83d973786a33776845e6",
+      "benchmark_id": "B04_CHANNEL_55_20",
+      "decision_timing": {
+        "data_cutoff": "AVAILABLE_BY_DECISION_TIME",
+        "decision_time": "BAR_CLOSE_TIME",
+        "evaluation": "COMPLETED_H1_BAR_ONLY",
+        "future_execution": "STRICTLY_AFTER_DECISION_TIME",
+        "same_close_fill_allowed": false
+      },
+      "direction": "LONG_ONLY",
+      "entry_rule": {
+        "comparison": "STRICT",
+        "current_high_excluded": true,
+        "fast_ema_period": null,
+        "kind": "CHANNEL_BREAKOUT",
+        "previous_high_period": 55,
+        "slow_ema_period": null
+      },
+      "exit_rule": {
+        "current_low_excluded": true,
+        "kind": "CHANNEL_EXIT",
+        "normal_exits": [
+          "PROTECTIVE_STOP",
+          "CHANNEL_EXIT"
+        ],
+        "previous_low_period": 20
+      },
+      "family": "CHANNEL_TREND",
+      "gap_policy": "CONTINUE_OVER_OBSERVED_BARS_WITHOUT_FILLING",
+      "kernel_semantics": "phase3.1-v0.1.0",
+      "literature_replication": false,
+      "optimized": false,
+      "origin_category": "CHANNEL_TREND_BENCHMARK",
+      "profitability_known": false,
+      "protective_stop": {
+        "atr_multiple": 2,
+        "atr_period": 14,
+        "atr_type": "WILDER",
+        "fixed_after_entry": true,
+        "reference": "SIGNAL_CLOSE_MINUS_MULTIPLE_ATR",
+        "tick_rounding": "DEFERRED_INSTRUMENT_POLICY"
+      },
+      "pyramiding": false,
+      "qualification_eligible": false,
+      "required_observations": 56,
+      "research_classification": "EXPLORATORY_RESEARCH_ONLY",
+      "research_status": "PREREGISTERED_EXPLORATORY_BENCHMARK",
+      "same_bar_reentry": false,
+      "schema_version": "benchmark-definition-v0.1.0",
+      "short_support": false,
+      "take_profit": {
+        "initial_price_risk_basis": null,
+        "kind": "NONE",
+        "r_multiple": null,
+        "target_basis": null
+      },
+      "time_basis": "H1_OBSERVED_BAR",
+      "trailing_stop": false
+    }
+  ],
+  "literature_replication": false,
+  "optimized": false,
+  "profitability_known": false,
+  "qualification_eligible": false,
+  "registry_sha256": "a1aab711f91dc46f3dde65023777a42eb62c3e99ff8d2bb3ea5ac85a3d64a8b5",
+  "research_classification": "EXPLORATORY_RESEARCH_ONLY",
+  "research_status": "PREREGISTERED_EXPLORATORY_BENCHMARK",
+  "schema_version": "benchmark-registry-v0.1.0",
+  "time_basis": "H1_OBSERVED_BAR"
+}
