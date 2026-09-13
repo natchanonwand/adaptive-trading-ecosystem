@@ -81,3 +81,6 @@ data/discovery/
 
 # Immutable local Phase 2B evidence
 data/datasets/
+
+# Local Phase 3.3B research evidence
+data/research/
