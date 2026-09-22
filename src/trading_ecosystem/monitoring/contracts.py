@@ -52,6 +52,7 @@ class EventType(StrEnum):
     SYSTEM_STARTED = "SYSTEM_STARTED"
     SYSTEM_STOPPED = "SYSTEM_STOPPED"
     SYSTEM_HEALTH = "SYSTEM_HEALTH"
+    EXTERNAL_OBSERVATION = "EXTERNAL_OBSERVATION"
 
 
 class Scope(Contract):
@@ -69,14 +70,22 @@ class AccountView(Contract):
     domain_identity: Label
     balance: Money
     equity: Money | None
-    realized_pnl: Money
+    realized_pnl: Money | None
     unrealized_pnl: Money | None
-    commissions: Money
-    financing: Money
+    commissions: Money | None
+    financing: Money | None
     used_margin: Money | None
     free_margin: Money | None
     stale: bool = Field(strict=True)
     complete: bool = Field(strict=True)
+
+    @model_validator(mode="after")
+    def complete_account_values(self) -> Self:
+        if self.complete and any(
+            value is None for value in (self.realized_pnl, self.commissions, self.financing)
+        ):
+            raise ValueError("COMPLETE_ACCOUNT_REQUIRES_REPORTED_TOTALS")
+        return self
 
 
 class PortfolioView(Contract):
@@ -84,14 +93,14 @@ class PortfolioView(Contract):
     account: AccountView
     gross_exposure: Money | None
     open_risk: Money | None
-    reserved_risk: Money
+    reserved_risk: Money | None
     daily_pnl: Money | None
     peak_nav: Money | None
     peak_equity: Money | None = None
     drawdown: Money | None
     risk_state: Literal["ACTIVE", "PAUSE_ENTRIES", "HALT_AND_FLATTEN"] | None
     open_positions: Count
-    reserved_positions: Count
+    reserved_positions: Count | None
 
 
 class TradeView(Contract):
@@ -197,7 +206,7 @@ class EventInput(Contract):
     source_instance_id: EntityId
     source_sequence: AccountSequence
     strategy_id: EntityId | None = None
-    symbol: Asset | None = None
+    symbol: Asset | Label | None = None
     correlation_id: EntityId
     causation_id: EntityId | None = None
     corrects_event_id: EntityId | None = None

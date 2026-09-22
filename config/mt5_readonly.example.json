@@ -1,0 +1,17 @@
+{
+  "aliases": {
+    "BTCUSD": "BTCUSDm",
+    "XAUUSD": "XAUUSDm",
+    "USTEC100": "USTECm"
+  },
+  "account_seconds": 1,
+  "positions_seconds": 1,
+  "quotes_seconds": 1,
+  "health_seconds": 5,
+  "history_seconds": 10,
+  "metadata_seconds": 300,
+  "stale_seconds": 30,
+  "initial_history_days": 1,
+  "history_window_seconds": 86400,
+  "overlap_seconds": 120
+}

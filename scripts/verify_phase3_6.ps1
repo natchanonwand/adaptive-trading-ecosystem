@@ -1,4 +1,4 @@
-param([switch]$CodeOnly)
+param([switch]$CodeOnly, [string]$BaselineManifest = '.local/phase3_6/baseline.json')
 $ErrorActionPreference = 'Stop'
 $workspace = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 Set-Location -LiteralPath $workspace
@@ -22,8 +22,8 @@ function Get-PreservedHashes {
     return $hashes
 }
 $before = Get-PreservedHashes
-if (Test-Path -LiteralPath '.local/phase3_6/baseline.json') {
-    $original = Get-Content -LiteralPath '.local/phase3_6/baseline.json' -Raw | ConvertFrom-Json -AsHashtable
+if (Test-Path -LiteralPath $BaselineManifest) {
+    $original = Get-Content -LiteralPath $BaselineManifest -Raw | ConvertFrom-Json -AsHashtable
     if ($original.Count -ne $before.Count) { throw 'Original working baseline file count changed' }
     foreach ($file in $original.Keys) {
         if ($before[$file] -ne $original[$file]) { throw "Original working baseline changed: $file" }

@@ -1,0 +1,110 @@
+{
+  "basis": "CURRENT_BROKER_METADATA_ONLY",
+  "observed_broker": "Exness Technologies Ltd",
+  "observed_server": "Exness-MT5Trial14",
+  "terminal_build": 6182,
+  "account_mode": "DEMO",
+  "account_currency": "USD",
+  "sizing_eligible": false,
+  "instruments": [
+    {
+      "status": "PARTIAL",
+      "reasons": [
+        "MARGIN_AND_COMMISSION_MODEL_NOT_VALIDATED_BY_METADATA"
+      ],
+      "metadata": {
+        "name": "BTCUSDm",
+        "point": "0.01",
+        "digits": 2,
+        "visible": true,
+        "trade_mode": 4,
+        "volume_max": "200.0",
+        "volume_min": "0.01",
+        "volume_step": "0.01",
+        "currency_base": "BTC",
+        "margin_initial": "1.0",
+        "currency_margin": "BTC",
+        "currency_profit": "USD",
+        "trade_calc_mode": 5,
+        "trade_tick_size": "0.01",
+        "trade_tick_value": "0.01",
+        "trade_stops_level": 0,
+        "margin_maintenance": "0.0",
+        "trade_freeze_level": 0,
+        "trade_contract_size": "1.0",
+        "trade_tick_value_loss": "0.01",
+        "trade_tick_value_profit": "0.01"
+      },
+      "observed_at": "2026-09-21T17:51:59.737937Z",
+      "broker_symbol": "BTCUSDm",
+      "logical_symbol": "BTCUSD",
+      "sizing_eligible": false
+    },
+    {
+      "status": "PARTIAL",
+      "reasons": [
+        "MARGIN_AND_COMMISSION_MODEL_NOT_VALIDATED_BY_METADATA"
+      ],
+      "metadata": {
+        "name": "XAUUSDm",
+        "point": "0.001",
+        "digits": 3,
+        "visible": true,
+        "trade_mode": 4,
+        "volume_max": "200.0",
+        "volume_min": "0.01",
+        "volume_step": "0.01",
+        "currency_base": "XAU",
+        "margin_initial": "0.0",
+        "currency_margin": "XAU",
+        "currency_profit": "USD",
+        "trade_calc_mode": 0,
+        "trade_tick_size": "0.001",
+        "trade_tick_value": "0.1",
+        "trade_stops_level": 0,
+        "margin_maintenance": "0.0",
+        "trade_freeze_level": 0,
+        "trade_contract_size": "100.0",
+        "trade_tick_value_loss": "0.1",
+        "trade_tick_value_profit": "0.1"
+      },
+      "observed_at": "2026-09-21T17:51:59.737937Z",
+      "broker_symbol": "XAUUSDm",
+      "logical_symbol": "XAUUSD",
+      "sizing_eligible": false
+    },
+    {
+      "status": "PARTIAL",
+      "reasons": [
+        "MARGIN_AND_COMMISSION_MODEL_NOT_VALIDATED_BY_METADATA"
+      ],
+      "metadata": {
+        "name": "USTECm",
+        "point": "0.01",
+        "digits": 2,
+        "visible": true,
+        "trade_mode": 4,
+        "volume_max": "500.0",
+        "volume_min": "0.05",
+        "volume_step": "0.01",
+        "currency_base": "USD",
+        "margin_initial": "0.0",
+        "currency_margin": "USD",
+        "currency_profit": "USD",
+        "trade_calc_mode": 2,
+        "trade_tick_size": "0.01",
+        "trade_tick_value": "0.01",
+        "trade_stops_level": 0,
+        "margin_maintenance": "0.0",
+        "trade_freeze_level": 0,
+        "trade_contract_size": "1.0",
+        "trade_tick_value_loss": "0.01",
+        "trade_tick_value_profit": "0.01"
+      },
+      "observed_at": "2026-09-21T17:51:59.737937Z",
+      "broker_symbol": "USTECm",
+      "logical_symbol": "USTEC100",
+      "sizing_eligible": false
+    }
+  ]
+}

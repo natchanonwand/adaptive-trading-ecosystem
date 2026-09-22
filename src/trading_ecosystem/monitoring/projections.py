@@ -63,7 +63,7 @@ def apply_projection(conn: Connection, stored: StoredEvent) -> None:
         account_id=str(event.scope.account_id) if event.scope.account_id else None,
         run_id=str(event.scope.run_id) if event.scope.run_id else None,
         strategy_id=str(event.strategy_id) if event.strategy_id else None,
-        symbol=event.symbol.value if event.symbol else None,
+        symbol=str(event.symbol) if event.symbol else None,
         source=event.source,
         source_instance_id=str(event.source_instance_id),
         magic_number=event.magic_number,

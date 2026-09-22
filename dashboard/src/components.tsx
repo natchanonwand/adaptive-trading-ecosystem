@@ -101,6 +101,7 @@ export function AccountSummary({ account, portfolio }: { account: Values; portfo
       <Metric title="Open risk" value={f.money(portfolio.open_risk)} note="Reported risk · USD" />
       <Metric title="Open positions" value={f.count(portfolio.open_positions)} />
       <Metric title="Free margin" value={f.money(account.free_margin)} />
+      <Metric title="Used margin" value={f.money(account.used_margin)} />
     </div>
   );
 }

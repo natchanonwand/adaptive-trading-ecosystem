@@ -62,39 +62,18 @@ def test_accounting_scope() -> None:
 
 
 def test_entire_tracked_phase3_3c_baseline_unchanged() -> None:
-    result = subprocess.run(
-        ["git", "diff", "--exit-code", "phase3.3c-v0.1.0", "--", "."],
-        capture_output=True,
-        check=False,
-    )
-    # New authorized Phase 3.4 files may be staged later. Tagged source is also
-    # checked byte-for-byte by tests/phase34/test_scope.py.
+    # Check every frozen path, including deletions; later authorized checkpoints
+    # add tracked files and must not be confused with edits to frozen source.
     names = subprocess.run(
-        ["git", "diff", "--name-only", "phase3.3c-v0.1.0"],
+        ["git", "ls-tree", "-r", "--name-only", "phase3.3c-v0.1.0"],
         capture_output=True,
         check=True,
         text=True,
     ).stdout.splitlines()
-    allowed = {
-        "PHASE3_4A_REPORT.md",
-        "docs/PHASE3_4A_PORTFOLIO_ACCOUNTING.md",
-        "scripts/verify_phase3_4a.ps1",
-        "scripts/verify_phase3_4.ps1",
-        "PHASE3_4_REPORT.md",
-        "docs/PHASE3_4_PORTFOLIO_RISK_ENGINE.md",
-        "tests/integration/test_phase34_pipeline.py",
-    }
-    assert result.returncode in {0, 1}
-    assert all(
-        name in allowed
-        or name.startswith(
-            (
-                "src/trading_ecosystem/accounting/",
-                "tests/accounting/",
-                "src/trading_ecosystem/portfolio/",
-                "src/trading_ecosystem/risk/",
-                "tests/phase34/",
-            )
-        )
-        for name in names
+    assert names
+    result = subprocess.run(
+        ["git", "diff", "--exit-code", "phase3.3c-v0.1.0", "--", *names],
+        capture_output=True,
+        check=False,
     )
+    assert result.returncode == 0

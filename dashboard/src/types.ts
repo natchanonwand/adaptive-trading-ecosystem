@@ -104,6 +104,7 @@ export const eventTypes = [
   'EA_HEALTH',
   'EXECUTION_INCIDENT',
   'SYSTEM_STARTED',
+  'EXTERNAL_OBSERVATION',
   'SYSTEM_STOPPED',
   'SYSTEM_HEALTH',
 ] as const;
