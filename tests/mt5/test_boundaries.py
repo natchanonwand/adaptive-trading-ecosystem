@@ -166,11 +166,14 @@ def test_read_only_sdk_allowlist_and_lazy_import() -> None:
         "history_deals_get",
         "history_orders_get",
     }
+    from trading_ecosystem.mt5.calculations import CALCULATION_METHODS, READ_METHODS
+
+    assert allowed == READ_METHODS
+    assert CALCULATION_METHODS == {"order_calc_profit", "order_calc_margin"}
+    allowed |= CALCULATION_METHODS
     forbidden = {
         "order_" + "send",
         "order_check",
-        "order_calc_profit",
-        "order_calc_margin",
         "login",
     }
     for path in Path("src/trading_ecosystem/mt5").glob("*.py"):

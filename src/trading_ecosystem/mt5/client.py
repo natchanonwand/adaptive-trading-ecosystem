@@ -31,6 +31,7 @@ ACCOUNT = (
     "company",
     "trade_mode",
     "currency",
+    "currency_digits",
     "leverage",
     "balance",
     "equity",
