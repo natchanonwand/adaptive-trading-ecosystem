@@ -14,11 +14,20 @@ import {
   SystemHealth,
 } from './components';
 import type { Client } from './client';
+import { ObserverPage } from './ObserverPage';
 import * as f from './format';
 import { useDashboard, useResource } from './hooks';
 import type { Row, Values } from './types';
 
-const pages = ['Overview', 'Portfolio', 'Trades', 'Risk', 'Systems', 'Research'] as const;
+const pages = [
+  'Overview',
+  'Portfolio',
+  'Trades',
+  'Risk',
+  'Systems',
+  'Research',
+  'EA Observer',
+] as const;
 type PageName = (typeof pages)[number];
 const descriptions: Record<PageName, string> = {
   Overview: 'Your ecosystem, at a glance. Every number traces back to an observation.',
@@ -27,8 +36,9 @@ const descriptions: Record<PageName, string> = {
   Risk: 'Authoritative policy, current state and the reasons behind it.',
   Systems: 'Component health, observation age and connection visibility.',
   Research: 'A read-only workspace for future strategy and EA behavior research.',
+  'EA Observer': 'External EA sessions, broker observations and attribution confidence.',
 };
-const icons = ['▦', '▥', '⇄', '◇', '▣', '⌕'];
+const icons = ['▦', '▥', '⇄', '◇', '▣', '⌕', '◉'];
 function values(value: unknown): Values {
   return value && typeof value === 'object' && !Array.isArray(value) ? (value as Values) : {};
 }
@@ -543,6 +553,7 @@ export default function App({ client }: { client: Client }) {
               )}
             </Panel>
           )}
+          {page === 'EA Observer' && <ObserverPage mock={client.mock} />}
           <footer>
             <span>ADAPTIVE / TELEMETRY CONSOLE</span>
             <span>Read-only · Local-first · Phase 3.6</span>

@@ -93,9 +93,17 @@ describe('read-only dashboard components', () => {
     expect(await screen.findByText('$128,450.00', { selector: 'strong' })).toBeInTheDocument();
     expect(screen.getByText(/MOCK DATA/)).toBeInTheDocument();
     const nav = screen.getByRole('navigation');
-    expect(within(nav).getAllByRole('button')).toHaveLength(6);
+    expect(
+      within(nav)
+        .getAllByRole('button')
+        .map((button) => button.title),
+    ).toEqual(['Overview', 'Portfolio', 'Trades', 'Risk', 'Systems', 'Research', 'EA Observer']);
     fireEvent.click(within(nav).getByText('Risk'));
     expect(screen.getByText('Risk control room')).toBeInTheDocument();
+    for (const name of ['Buy', 'Sell', 'Close position', 'Reset halt', 'Enable live'])
+      expect(screen.queryByRole('button', { name })).not.toBeInTheDocument();
+    fireEvent.click(within(nav).getByText('EA Observer'));
+    expect(screen.getByText(/No external EA observations/)).toBeInTheDocument();
     for (const name of ['Buy', 'Sell', 'Close position', 'Reset halt', 'Enable live'])
       expect(screen.queryByRole('button', { name })).not.toBeInTheDocument();
   });

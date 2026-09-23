@@ -1,4 +1,4 @@
-param([switch]$CodeOnly)
+param([switch]$CodeOnly, [string[]]$ReviewedIntegrationFiles = @())
 $ErrorActionPreference = 'Stop'
 $workspace = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 Set-Location -LiteralPath $workspace
@@ -9,6 +9,12 @@ $allowedChanges = @(
     'dashboard/src/components.tsx', 'dashboard/src/types.ts',
     'tests/accounting/test_scope.py', 'scripts/verify_phase3_6.ps1'
 )
+foreach ($file in $ReviewedIntegrationFiles) {
+    if ($file -notin @('dashboard/src/App.tsx', 'dashboard/tests/components.test.tsx', 'scripts/verify_phase4_a.ps1')) {
+        throw "Unsupported reviewed integration file: $file"
+    }
+}
+$allowedChanges += $ReviewedIntegrationFiles
 $tracked = @(& git ls-tree -r --name-only $checkpoint)
 if ($LASTEXITCODE -ne 0 -or -not $tracked.Count) { throw 'Validated local checkpoint missing' }
 $changed = @(& git diff --name-only $checkpoint -- $tracked)

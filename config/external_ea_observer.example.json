@@ -1,0 +1,11 @@
+{
+  "mode": "EXTERNAL_EA_OBSERVATION",
+  "symbols": ["BTCUSDm", "XAUUSDm", "USTECm"],
+  "candidates": [],
+  "poll_ms": 1000,
+  "history_seconds": 3,
+  "overlap_seconds": 120,
+  "history_days": 1,
+  "bars_per_window": 50,
+  "max_records": 10000
+}
