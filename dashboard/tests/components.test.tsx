@@ -97,13 +97,27 @@ describe('read-only dashboard components', () => {
       within(nav)
         .getAllByRole('button')
         .map((button) => button.title),
-    ).toEqual(['Overview', 'Portfolio', 'Trades', 'Risk', 'Systems', 'Research', 'EA Observer']);
+    ).toEqual([
+      'Overview',
+      'Portfolio',
+      'Trades',
+      'Risk',
+      'Systems',
+      'Research',
+      'EA Observer',
+      'Feature Data',
+    ]);
     fireEvent.click(within(nav).getByText('Risk'));
     expect(screen.getByText('Risk control room')).toBeInTheDocument();
     for (const name of ['Buy', 'Sell', 'Close position', 'Reset halt', 'Enable live'])
       expect(screen.queryByRole('button', { name })).not.toBeInTheDocument();
     fireEvent.click(within(nav).getByText('EA Observer'));
     expect(screen.getByText(/No external EA observations/)).toBeInTheDocument();
+    for (const name of ['Buy', 'Sell', 'Close position', 'Reset halt', 'Enable live'])
+      expect(screen.queryByRole('button', { name })).not.toBeInTheDocument();
+    fireEvent.click(within(nav).getByText('Feature Data'));
+    expect(screen.getByText(/General dashboard mock does not represent/)).toBeInTheDocument();
+    expect(screen.queryByText('Connect your local telemetry')).not.toBeInTheDocument();
     for (const name of ['Buy', 'Sell', 'Close position', 'Reset halt', 'Enable live'])
       expect(screen.queryByRole('button', { name })).not.toBeInTheDocument();
   });

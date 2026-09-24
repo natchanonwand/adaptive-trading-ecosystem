@@ -15,6 +15,7 @@ import {
 } from './components';
 import type { Client } from './client';
 import { ObserverPage } from './ObserverPage';
+import { FeaturePage } from './FeaturePage';
 import * as f from './format';
 import { useDashboard, useResource } from './hooks';
 import type { Row, Values } from './types';
@@ -27,6 +28,7 @@ const pages = [
   'Systems',
   'Research',
   'EA Observer',
+  'Feature Data',
 ] as const;
 type PageName = (typeof pages)[number];
 const descriptions: Record<PageName, string> = {
@@ -37,8 +39,9 @@ const descriptions: Record<PageName, string> = {
   Systems: 'Component health, observation age and connection visibility.',
   Research: 'A read-only workspace for future strategy and EA behavior research.',
   'EA Observer': 'External EA sessions, broker observations and attribution confidence.',
+  'Feature Data': 'Versioned offline features, outcome separation and data quality.',
 };
-const icons = ['▦', '▥', '⇄', '◇', '▣', '⌕', '◉'];
+const icons = ['▦', '▥', '⇄', '◇', '▣', '⌕', '◉', '▤'];
 function values(value: unknown): Values {
   return value && typeof value === 'object' && !Array.isArray(value) ? (value as Values) : {};
 }
@@ -324,33 +327,39 @@ export default function App({ client }: { client: Client }) {
             <span className="eyebrow">LOCAL MONITORING</span>
             <span className="header-title">ADAPTIVE TRADING ECOSYSTEM</span>
           </div>
-          <div className="global-status">
-            <div>
-              <span className="eyebrow">Environment</span>
-              <Badge value={environment ?? 'UNKNOWN'} live={environment === 'LIVE'} />
+          {page === 'Feature Data' ? (
+            <div className="global-status">
+              <Badge value="OFFLINE DATASET" />
             </div>
-            <div>
-              <span className="eyebrow">Connection</span>
-              <Badge value={state.connection} />
+          ) : (
+            <div className="global-status">
+              <div>
+                <span className="eyebrow">Environment</span>
+                <Badge value={environment ?? 'UNKNOWN'} live={environment === 'LIVE'} />
+              </div>
+              <div>
+                <span className="eyebrow">Connection</span>
+                <Badge value={state.connection} />
+              </div>
+              <div>
+                <span className="eyebrow">Risk state</span>
+                <Badge value={riskState} />
+              </div>
+              <div className="last-update">
+                <span className="eyebrow">Last telemetry</span>
+                <time>
+                  {state.updated === null
+                    ? f.unavailable
+                    : `${Math.max(0, Math.floor((state.now - state.updated) / 1000))}s ago`}
+                </time>
+                <small>
+                  {state.updated === null
+                    ? f.unavailable
+                    : f.timestamp(new Date(state.updated).toISOString())}
+                </small>
+              </div>
             </div>
-            <div>
-              <span className="eyebrow">Risk state</span>
-              <Badge value={riskState} />
-            </div>
-            <div className="last-update">
-              <span className="eyebrow">Last telemetry</span>
-              <time>
-                {state.updated === null
-                  ? f.unavailable
-                  : `${Math.max(0, Math.floor((state.now - state.updated) / 1000))}s ago`}
-              </time>
-              <small>
-                {state.updated === null
-                  ? f.unavailable
-                  : f.timestamp(new Date(state.updated).toISOString())}
-              </small>
-            </div>
-          </div>
+          )}
         </header>
         {client.mock && (
           <div className="mock-banner" role="status">
@@ -369,49 +378,57 @@ export default function App({ client }: { client: Client }) {
               <h1>{page}</h1>
               <p className="muted">{descriptions[page]}</p>
             </div>
-            <button onClick={state.refresh} className="refresh">
-              ↻ Refresh observations
-            </button>
-          </div>
-          <div className="stream-bar">
-            <label>
-              Observation stream
-              <select value={state.stream} onChange={(e) => state.setStream(e.target.value)}>
-                <option value="">Select a stream</option>
-                {state.catalog?.items.map((s) => (
-                  <option key={s.stream_id} value={s.stream_id}>
-                    {s.scope.environment} · Account {s.scope.account_id ?? 'System'} ·{' '}
-                    {s.stream_id.slice(0, 8)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <span className="muted small">UTC timestamps · USD amounts · read-only telemetry</span>
-            {state.catalog?.next_cursor && (
-              <button onClick={() => void state.moreStreams()}>More streams</button>
+            {page !== 'Feature Data' && (
+              <button onClick={state.refresh} className="refresh">
+                ↻ Refresh observations
+              </button>
             )}
           </div>
-          <ErrorNotice message={state.error} />
-          {state.connection === 'STALE' && !client.mock && (
-            <p className="notice warning" role="status">
-              ▲ STALE — the latest telemetry timestamp is over 30 seconds old. Displayed
-              observations may be old.
-            </p>
-          )}
-          {!!Object.keys(state.snapshot?.errors ?? {}).length && (
-            <p className="notice warning" role="alert">
-              Partial data: {Object.keys(state.snapshot?.errors ?? {}).join(', ')} unavailable.
-              Other sections remain usable.
-            </p>
-          )}
-          {!state.stream && (
-            <Panel title="Connect your local telemetry">
-              <Empty>
-                {state.error
-                  ? 'Start the local read-only API and refresh. No mock fallback is used.'
-                  : 'No stream selected. Choose an existing observation stream or use the explicitly labeled mock preview.'}
-              </Empty>
-            </Panel>
+          {page !== 'Feature Data' && (
+            <>
+              <div className="stream-bar">
+                <label>
+                  Observation stream
+                  <select value={state.stream} onChange={(e) => state.setStream(e.target.value)}>
+                    <option value="">Select a stream</option>
+                    {state.catalog?.items.map((s) => (
+                      <option key={s.stream_id} value={s.stream_id}>
+                        {s.scope.environment} · Account {s.scope.account_id ?? 'System'} ·{' '}
+                        {s.stream_id.slice(0, 8)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <span className="muted small">
+                  UTC timestamps · USD amounts · read-only telemetry
+                </span>
+                {state.catalog?.next_cursor && (
+                  <button onClick={() => void state.moreStreams()}>More streams</button>
+                )}
+              </div>
+              <ErrorNotice message={state.error} />
+              {state.connection === 'STALE' && !client.mock && (
+                <p className="notice warning" role="status">
+                  ▲ STALE — the latest telemetry timestamp is over 30 seconds old. Displayed
+                  observations may be old.
+                </p>
+              )}
+              {!!Object.keys(state.snapshot?.errors ?? {}).length && (
+                <p className="notice warning" role="alert">
+                  Partial data: {Object.keys(state.snapshot?.errors ?? {}).join(', ')} unavailable.
+                  Other sections remain usable.
+                </p>
+              )}
+              {!state.stream && (
+                <Panel title="Connect your local telemetry">
+                  <Empty>
+                    {state.error
+                      ? 'Start the local read-only API and refresh. No mock fallback is used.'
+                      : 'No stream selected. Choose an existing observation stream or use the explicitly labeled mock preview.'}
+                  </Empty>
+                </Panel>
+              )}
+            </>
           )}
           {page === 'Overview' && (
             <>
@@ -554,6 +571,7 @@ export default function App({ client }: { client: Client }) {
             </Panel>
           )}
           {page === 'EA Observer' && <ObserverPage mock={client.mock} />}
+          {page === 'Feature Data' && <FeaturePage mock={client.mock} />}
           <footer>
             <span>ADAPTIVE / TELEMETRY CONSOLE</span>
             <span>Read-only · Local-first · Phase 3.6</span>
