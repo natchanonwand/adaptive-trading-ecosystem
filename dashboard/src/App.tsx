@@ -16,6 +16,7 @@ import {
 import type { Client } from './client';
 import { ObserverPage } from './ObserverPage';
 import { FeaturePage } from './FeaturePage';
+import { ResearchPage } from './ResearchPage';
 import * as f from './format';
 import { useDashboard, useResource } from './hooks';
 import type { Row, Values } from './types';
@@ -37,7 +38,7 @@ const descriptions: Record<PageName, string> = {
   Trades: 'Reported trade history and a UTC calendar of observed outcomes.',
   Risk: 'Authoritative policy, current state and the reasons behind it.',
   Systems: 'Component health, observation age and connection visibility.',
-  Research: 'A read-only workspace for future strategy and EA behavior research.',
+  Research: 'Offline behavioral measurements, sample sufficiency and evidence.',
   'EA Observer': 'External EA sessions, broker observations and attribution confidence.',
   'Feature Data': 'Versioned offline features, outcome separation and data quality.',
 };
@@ -327,7 +328,7 @@ export default function App({ client }: { client: Client }) {
             <span className="eyebrow">LOCAL MONITORING</span>
             <span className="header-title">ADAPTIVE TRADING ECOSYSTEM</span>
           </div>
-          {page === 'Feature Data' ? (
+          {page === 'Feature Data' || page === 'Research' ? (
             <div className="global-status">
               <Badge value="OFFLINE DATASET" />
             </div>
@@ -378,13 +379,13 @@ export default function App({ client }: { client: Client }) {
               <h1>{page}</h1>
               <p className="muted">{descriptions[page]}</p>
             </div>
-            {page !== 'Feature Data' && (
+            {page !== 'Feature Data' && page !== 'Research' && (
               <button onClick={state.refresh} className="refresh">
                 ↻ Refresh observations
               </button>
             )}
           </div>
-          {page !== 'Feature Data' && (
+          {page !== 'Feature Data' && page !== 'Research' && (
             <>
               <div className="stream-bar">
                 <label>
@@ -519,57 +520,7 @@ export default function App({ client }: { client: Client }) {
               </Panel>
             </>
           )}
-          {page === 'Research' && (
-            <Panel title="Strategy & EA research" note="Read-only foundation">
-              <p className="notice">
-                Observed metrics only. No GPT analysis, ranking or research qualification.
-              </p>
-              {!state.snapshot?.views.activity?.items.length ? (
-                <Empty>No strategy or EA activity summaries available.</Empty>
-              ) : (
-                <div className="table-scroll">
-                  <table>
-                    <thead>
-                      <tr>
-                        {[
-                          'Strategy / EA',
-                          'State',
-                          'Trades',
-                          'Net P/L',
-                          'Net R',
-                          'Win rate',
-                          'Drawdown',
-                          'Last activity UTC',
-                          'Source',
-                        ].map((h) => (
-                          <th key={h}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {state.snapshot.views.activity.items.map((r) => (
-                        <tr key={r.event_id}>
-                          <td className="identifier">
-                            {f.label(r.values.strategy_id ?? r.values.source_instance_id)}
-                          </td>
-                          <td>
-                            <Badge value={r.values.status} />
-                          </td>
-                          <td>{f.count(r.values.trades)}</td>
-                          <td>{f.money(r.values.pnl)}</td>
-                          <td>{f.multiple(r.values.net_r)}</td>
-                          <td>{f.unavailable}</td>
-                          <td>{f.percent(r.values.drawdown)}</td>
-                          <td>{f.timestamp(r.occurred_at)}</td>
-                          <td>{f.source(r.values.source)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </Panel>
-          )}
+          {page === 'Research' && <ResearchPage mock={client.mock} />}
           {page === 'EA Observer' && <ObserverPage mock={client.mock} />}
           {page === 'Feature Data' && <FeaturePage mock={client.mock} />}
           <footer>
