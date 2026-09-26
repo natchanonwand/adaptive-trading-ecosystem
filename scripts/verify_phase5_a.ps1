@@ -21,7 +21,12 @@ if ($LASTEXITCODE -ne 0) { throw 'Frozen registry failed' }
 Push-Location dashboard
 try {
     foreach ($task in @('typecheck', 'lint', 'format', 'test', 'build')) {
-        & npm.cmd run $task
+        if ($task -eq 'format') {
+            # Git-managed Windows checkouts may use CRLF; retain every other style check.
+            & npm.cmd run format -- --end-of-line auto
+        } else {
+            & npm.cmd run $task
+        }
         if ($LASTEXITCODE -ne 0) { throw "Frontend $task failed" }
     }
 } finally { Pop-Location }
