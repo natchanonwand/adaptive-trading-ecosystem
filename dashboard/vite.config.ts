@@ -18,6 +18,9 @@ const proxy: ProxyOptions = {
 };
 export default defineConfig({
   plugins: [react()],
+  build: {
+    rollupOptions: { input: { dashboard: 'index.html', workbench: 'workbench.html' } },
+  },
   server: {
     host: '127.0.0.1',
     port: 5173,
