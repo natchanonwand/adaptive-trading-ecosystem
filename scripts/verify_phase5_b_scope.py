@@ -62,6 +62,14 @@ FIX_FILES.difference_update(
         "PHASE5_B_0_1_REPORT.md",
     }
 )
+FIX_FILES.update(
+    {
+        "src/trading_ecosystem/tester/environment.py",
+        "src/trading_ecosystem/tester/bootstrap.py",
+        "tests/test_phase5b_environment.py",
+        "PHASE5_B1A_REPORT.md",
+    }
+)
 CHANGED = {
     "src/trading_ecosystem/workbench/__main__.py",
     "dashboard/src/workbench/Workbench.tsx",

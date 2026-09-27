@@ -115,3 +115,31 @@ it('saves a reviewed specification without creating an execution attempt', async
     set_text: null,
   });
 });
+
+it('shows the research terminal blocker independently of candidate readiness', () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => ({ ok: true, json: async () => ({ items: [] }) })),
+  );
+  render(
+    <ReadinessPanel
+      detail={{
+        ...detail,
+        acceptance_readiness: { status: 'READY', reasons: [] },
+        research_environment: {
+          status: 'BLOCKED_TESTER_CACHE',
+          binding: {
+            terminal_executable: 'C:/Synthetic/terminal64.exe',
+            terminal_data_root: 'C:/Synthetic/profile',
+            company: 'Synthetic',
+            terminal_build: '6230',
+          },
+        },
+      }}
+    />,
+  );
+  expect(screen.getByRole('region', { name: 'Research Environment' })).toBeInTheDocument();
+  expect(screen.getByText('BLOCKED_TESTER_CACHE')).toBeInTheDocument();
+  expect(screen.getByText(/Build 6230/)).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Run Baseline' })).toBeDisabled();
+});

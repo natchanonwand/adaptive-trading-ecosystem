@@ -164,7 +164,9 @@ class Service:
                 ea = onboarding.artifact_path(self.artifacts, artifact).read_bytes()
             except OSError:
                 raise Blocked(State.BLOCKED_ARTIFACT_IDENTITY_MISMATCH) from None
-            adapter = self.adapter or Adapter(load_environment(self.root / "environment.json"))
+            adapter = self.adapter or Adapter(
+                load_environment(self.root / "environment.json", run.config.symbol)
+            )
             runtime = adapter.prepare(
                 run.config, ea, run.ea_sha256, root, p.broker_binding.broker_name, self.cancel_event
             )

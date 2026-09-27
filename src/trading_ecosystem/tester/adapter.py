@@ -31,7 +31,27 @@ class Environment(FrozenModel):
     terminal_build: str = Field(pattern=r"^[0-9]{3,8}$")
 
 
-def load_environment(path: Path) -> Environment:
+def load_environment(path: Path, symbol: str = "XAUUSDm") -> Environment:
+    binding_path = path.with_name("terminal-binding.json")
+    if binding_path.is_file():
+        from trading_ecosystem.tester.environment import (
+            EnvironmentError,
+            TerminalBinding,
+            validate_binding,
+        )
+
+        try:
+            return validate_binding(
+                TerminalBinding.model_validate_json(binding_path.read_bytes()), symbol
+            )
+        except EnvironmentError as error:
+            try:
+                status = State(str(error))
+            except ValueError:
+                status = State.BLOCKED_TESTER_DATA_ROOT
+            raise Blocked(status) from None
+        except (ValueError, OSError):
+            raise Blocked(State.BLOCKED_TESTER_DATA_ROOT) from None
     try:
         return Environment.model_validate(json.loads(path.read_text(encoding="utf-8-sig")))
     except (OSError, ValueError):
@@ -163,7 +183,10 @@ class Adapter:
             (set_dir / (expert + ".set")).write_text(
                 config.set_text, encoding="utf-8", newline="\n"
             )
+        from trading_ecosystem.tester.environment import validate_config
+
         ini = configuration_text(config, expert, expert + ".htm", env.server)
+        validate_config(ini, config, env.server)
         (root / "tester.ini").write_text(ini, encoding="utf-8", newline="\n")
         # Source accounts, charts, profiles, credentials and EA binaries are never copied.
         return runtime

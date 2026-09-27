@@ -180,6 +180,21 @@ export function ReadinessPanel({
   return (
     <section aria-label="Baseline configuration">
       <h3>Acceptance readiness: {data.acceptance_readiness?.status}</h3>
+      {data.research_environment && (
+        <section aria-label="Research Environment">
+          <h4>Research Environment</h4>
+          <p>{data.research_environment.status}</p>
+          <p>
+            MT5 Terminal:{' '}
+            {data.research_environment.binding?.terminal_executable ?? 'Not configured'}
+          </p>
+          <p>
+            {data.research_environment.binding?.company} · Build{' '}
+            {data.research_environment.binding?.terminal_build ?? 'UNKNOWN'}
+          </p>
+          <p>Research/tester binding only. This is not broker-order execution authorization.</p>
+        </section>
+      )}
       <ul>
         {data.acceptance_readiness?.reasons.map((r) => (
           <li key={r}>{r}</li>
@@ -337,7 +352,11 @@ export function ReadinessPanel({
       </label>
       <button
         disabled={
-          busy || !selected || !runConfirmed || data.acceptance_readiness?.status !== 'READY'
+          busy ||
+          !selected ||
+          !runConfirmed ||
+          data.acceptance_readiness?.status !== 'READY' ||
+          (data.research_environment !== undefined && data.research_environment.status !== 'READY')
         }
         onClick={() =>
           void action(async () => {

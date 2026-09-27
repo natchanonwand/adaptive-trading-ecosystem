@@ -41,6 +41,15 @@ export type Project = {
 };
 export type Detail = Partial<Readiness> & {
   readiness_enabled?: boolean;
+  research_environment?: {
+    status: string;
+    binding?: {
+      terminal_executable: string;
+      company: string;
+      terminal_build: string;
+      terminal_data_root: string;
+    };
+  };
   baseline_enabled?: boolean;
   project: Project;
   candidate: Candidate;

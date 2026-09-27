@@ -53,6 +53,12 @@ class BaselineHandler(Handler):
                     detail = readiness.detail(
                         conn, self.server.artifacts, UUID(path.rsplit("/", 1)[1])
                     )
+                    from trading_ecosystem.tester.environment import binding_status
+
+                    detail["research_environment"] = binding_status(
+                        self.server.service.root / "terminal-binding.json",
+                        detail["project"]["broker_binding"]["broker_symbol"],
+                    )
                     detail["baseline_enabled"] = True
                     value = detail
                 elif path == "/workbench-api/baseline-configurations":
