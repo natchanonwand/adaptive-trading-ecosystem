@@ -76,7 +76,7 @@ def configuration_text(config: Configuration, expert: str, report: str, server: 
         "ReplaceReport=0",
         "ShutdownTerminal=1",
     ]
-    if config.input_provenance == "USER_SET":
+    if config.set_text is not None:
         settings.append(f"ExpertParameters={expert}.set")
     return "\n".join(settings) + "\n"
 

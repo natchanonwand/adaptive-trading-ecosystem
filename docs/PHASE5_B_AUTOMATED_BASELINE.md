@@ -209,3 +209,47 @@ Exactly one real acceptance attempt is permitted after the code gate when an
 authorized compatible registered candidate exists. Otherwise report
 `BLOCKED_NO_AUTHORIZED_CANDIDATE`. Synthetic test results never satisfy real
 acceptance. Stop after Phase 5B; no commit, tag, push or Phase 5C is included.
+
+## Phase 5B.0.2 readiness reconciliation
+
+The immediate checkpoint is `phase5b-tooling-v0.1.1` (`a76d896`).
+The verifier pins both the commit and annotated tag object of every Phase 5A/5B
+checkpoint, checks their ancestry, and requires HEAD and origin/main to derive
+from the immediate checkpoint. The explicit change allowlist applies relative
+to that checkpoint. Historical generated evidence remains strict byte verified.
+The stopped Phase 5B.1 report is also independently pinned by its byte hash.
+
+Source & Authorization appears in the Evidence tab of an existing project.
+Its append-only user attestations record source label/reference, authorization
+basis, server timestamp, candidate identity, revision and previous event identity.
+They do not update candidate license/tester declarations or claim vendor verification.
+Absent or prohibited provenance blocks execution even for verified EA bytes.
+No authorization is inferred or migrated from an artifact, catalog entry or note.
+The local same-origin API uses optimistic concurrency to reject stale attestations.
+
+The Baseline tab saves an immutable BaselineConfiguration through
+`POST /workbench-api/baseline-configurations`. It contains a separate configuration
+UUID, project UUID, confirmed validated parameters and a canonical SHA-256 identity
+including the candidate/artifact snapshot and input-knowledge limitation.
+Saving creates neither a BaselineRun nor a tester process. A subsequent explicit
+Run Baseline action creates one attempt linked to the selected configuration and
+snapshots the authorization event. The backend rechecks the persisted configuration
+and current authorization at creation and start; worker preflight checks again.
+Legacy attempt records remain readable, but cannot start without this contract.
+
+Inputs distinguish TESTER_DEFAULTS, VENDOR_DOCUMENTED_DEFAULTS (reference required),
+USER_SUPPLIED_SET and USER_CONFIRMED_VALUES. The latter two require exact validated
+.set content without optimization. Defaults remain explicitly opaque until observed;
+there is no claim of exact input reproducibility when those defaults are unavailable.
+Existing USER_SET records remain readable; new configurations use USER_SUPPLIED_SET.
+
+Existing documented UI defaults remain USD 10000, leverage 100, timeout 600 seconds.
+Dates are blank and required. Every value and the input limitation require review
+before saving. Symbol/timeframe are the project's explicit binding, not substituted.
+Historical dates, deposit, leverage and environment/model limits remain enforced.
+
+The product retains onboarding status separately from acceptance execution readiness.
+Acceptance READY requires artifact integrity, explicit authorization, DEMO binding,
+a valid saved specification and no explicit license/tester prohibition. UNKNOWN
+license/tester declarations remain unknown and do not themselves block readiness.
+The work in 5B.0.2 does not execute any real EA or Strategy Tester.

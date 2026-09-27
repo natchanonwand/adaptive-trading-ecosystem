@@ -61,6 +61,9 @@ def create(conn: Connection, config: Configuration) -> Run:
         if run.config != config:
             raise ValueError("IMMUTABLE_BASELINE_CONFIGURATION")
         return run
+    from trading_ecosystem.tester.readiness import history, require_execution_contract
+
+    require_execution_contract(conn, config)
     p = project(conn, config.project_id)
     candidate = onboarding.get_candidate(conn, p.candidate_id)
     if not p.broker_binding.ready() or (config.symbol, config.timeframe) != (
@@ -80,6 +83,7 @@ def create(conn: Connection, config: Configuration) -> Run:
         else None,
         declared_license_status=candidate.license_status,
         declared_tester_access=candidate.tester_access_status,
+        authorization_event_id=UUID(history(conn, config.project_id)[-1]["event_id"]),
         created_at=datetime.now(UTC),
     )
     conn.execute(

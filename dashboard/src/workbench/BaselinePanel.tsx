@@ -80,7 +80,13 @@ async function call<T>(path: string, body?: unknown): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export function BaselinePanel({ detail }: { detail: Detail }) {
+export function BaselinePanel({
+  detail,
+  existingOnly = false,
+}: {
+  detail: Detail;
+  existingOnly?: boolean;
+}) {
   const [form, setForm] = useState<Config>(() => ({
     baseline_run_id: crypto.randomUUID(),
     project_id: detail.project.project_id,
@@ -209,7 +215,7 @@ export function BaselinePanel({ detail }: { detail: Detail }) {
           </select>
         </label>
       )}
-      {!run && (
+      {!run && !existingOnly && (
         <form
           onSubmit={(e) => {
             e.preventDefault();

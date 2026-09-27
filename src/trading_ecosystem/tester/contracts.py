@@ -20,6 +20,7 @@ class State(StrEnum):
     PARSING = "PARSING"
     COMPLETE = "COMPLETE"
     BLOCKED_LICENSE = "BLOCKED_LICENSE"
+    BLOCKED_AUTHORIZATION_PROVENANCE = "BLOCKED_AUTHORIZATION_PROVENANCE"
     BLOCKED_TESTER_ACCESS = "BLOCKED_TESTER_ACCESS"
     BLOCKED_SYMBOL = "BLOCKED_SYMBOL"
     BLOCKED_ARTIFACT_IDENTITY_MISMATCH = "BLOCKED_ARTIFACT_IDENTITY_MISMATCH"
@@ -52,6 +53,7 @@ def transition(current: State, target: State) -> State:
 class Configuration(FrozenModel):
     baseline_run_id: UUID
     project_id: UUID
+    configuration_id: UUID | None = None
     environment: Literal["DEMO_RESEARCH_TESTER"] = "DEMO_RESEARCH_TESTER"
     symbol: Literal["XAUUSDm", "BTCUSDm", "USTECm"]
     timeframe: Literal["M1", "M5", "M15", "M30", "H1", "H4", "D1"]
@@ -62,7 +64,14 @@ class Configuration(FrozenModel):
     currency: Literal["USD"] = "USD"
     leverage: int = Field(ge=1, le=2000, strict=True)
     timeout_seconds: int = Field(default=600, ge=30, le=3600, strict=True)
-    input_provenance: Literal["TESTER_DEFAULTS", "USER_SET"] = "TESTER_DEFAULTS"
+    input_provenance: Literal[
+        "TESTER_DEFAULTS",
+        "USER_SET",
+        "VENDOR_DOCUMENTED_DEFAULTS",
+        "USER_SUPPLIED_SET",
+        "USER_CONFIRMED_VALUES",
+    ] = "TESTER_DEFAULTS"
+    input_reference: str | None = Field(default=None, max_length=2000)
     set_text: str | None = Field(default=None, max_length=65536)
 
     @model_validator(mode="after")
@@ -71,8 +80,21 @@ class Configuration(FrozenModel):
             raise ValueError("INVALID_HISTORICAL_INTERVAL")
         if (self.to_date - self.from_date).days > 366:
             raise ValueError("BASELINE_INTERVAL_LIMIT_366_DAYS")
-        if (self.input_provenance == "USER_SET") != (self.set_text is not None):
+        explicit = self.input_provenance in {
+            "USER_SET",
+            "USER_SUPPLIED_SET",
+            "USER_CONFIRMED_VALUES",
+        }
+        if explicit != (self.set_text is not None):
             raise ValueError("EXPLICIT_INPUT_PROVENANCE_REQUIRED")
+        if self.input_reference is not None:
+            from trading_ecosystem.workbench.contracts import safe_text
+
+            safe_text(self.input_reference)
+        if self.input_provenance == "VENDOR_DOCUMENTED_DEFAULTS" and (
+            not self.input_reference or self.input_reference.strip() == "UNKNOWN"
+        ):
+            raise ValueError("VENDOR_INPUT_REFERENCE_REQUIRED")
         if self.set_text is not None:
             from trading_ecosystem.tester.inputs import validate_set
 
@@ -88,6 +110,7 @@ class Run(FrozenModel):
     input_sha256: str | None
     declared_license_status: str
     declared_tester_access: str
+    authorization_event_id: UUID | None = None
     observed_tester_status: Literal[
         "UNKNOWN", "SUCCESS", "LICENSE_BLOCKED", "TESTER_ACCESS_BLOCKED", "INITIALIZATION_FAILED"
     ] = "UNKNOWN"

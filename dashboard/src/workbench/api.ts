@@ -1,3 +1,4 @@
+import type { Readiness } from './ReadinessPanel';
 export type Artifact = { artifact_id: string; filename: string; sha256: string; size: number };
 export type Binding = {
   broker_name: string;
@@ -38,7 +39,8 @@ export type Project = {
   broker_binding: Binding;
   product_name?: string;
 };
-export type Detail = {
+export type Detail = Partial<Readiness> & {
+  readiness_enabled?: boolean;
   baseline_enabled?: boolean;
   project: Project;
   candidate: Candidate;

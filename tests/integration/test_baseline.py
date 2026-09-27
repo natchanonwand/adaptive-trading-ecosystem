@@ -44,7 +44,7 @@ def migration(database: Engine) -> None:
             conn.execute(
                 text("SELECT version_num FROM workbench.baseline_alembic_version")
             ).scalar_one()
-            == "0001_baselines"
+            == "0002_readiness"
         )
         assert (
             conn.execute(text("SELECT version_num FROM workbench.alembic_version")).scalar_one()
@@ -89,7 +89,39 @@ def ready(
                 )
             ),
         )
-        return store.create(conn, config(project_id=project.project_id))
+        from trading_ecosystem.tester.readiness import (
+            Authorization,
+            BaselineConfiguration,
+            attest,
+            save_configuration,
+        )
+
+        attest(
+            conn,
+            project.project_id,
+            Authorization(
+                event_id=uuid4(),
+                provenance="USER_SUPPLIED_AUTHORIZED",
+                source_reference="synthetic fixture",
+                source_label="Synthetic tests",
+                authorization_basis="Test fixture authored for regression",
+                confirmed=True,
+            ),
+        )
+        cfg = config(project_id=project.project_id).model_copy(update={"configuration_id": uuid4()})
+        save_configuration(
+            conn,
+            root,
+            BaselineConfiguration(
+                configuration_id=cfg.configuration_id,
+                project_id=cfg.project_id,
+                parameters=cfg.model_dump(
+                    exclude={"baseline_run_id", "project_id", "configuration_id"}
+                ),
+                confirmed=True,
+            ),
+        )
+        return store.create(conn, cfg)
 
 
 def simulated(

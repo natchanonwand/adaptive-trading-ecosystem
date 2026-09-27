@@ -1,0 +1,50 @@
+"""Pinned lineage plus descendant-work contract; generated evidence stays byte exact."""
+
+import subprocess
+from pathlib import Path
+
+LINEAGE = (
+    ("phase5a-v0.1.0", "ec87ad23a1bbb805f033af59cf2e9991af755191"),  # pragma: allowlist secret
+    ("phase5a-v0.1.1", "e83c41b3d41704c276f98b0912439d13400eb490"),  # pragma: allowlist secret
+    (
+        "phase5b-tooling-v0.1.0",
+        "3a35373a7d022fe61a7289a18c33243a8f8fb178",  # pragma: allowlist secret
+    ),  # pragma: allowlist secret
+    (
+        "phase5b-tooling-v0.1.1",
+        "a76d896ac031c85951b300d6fa946b93f084ab70",  # pragma: allowlist secret
+    ),  # pragma: allowlist secret
+)
+TAG_OBJECTS = (
+    "16b4fc3be5ffbaf96f5e7c5e5c77dd5d6ed3a9c0",  # pragma: allowlist secret
+    "955cc487710df8773519e791d699b93c4f225012",  # pragma: allowlist secret
+    "1d1d57b1dbba78d5a3de2aabe50e9b56e4cfb245",  # pragma: allowlist secret
+    "41ea0316671c646c7d903da531008a0cb44d63bd",  # pragma: allowlist secret
+)
+
+
+def verify_checkpoint(
+    root: Path,
+    immediate: str = "phase5b-tooling-v0.1.1",
+    lineage: tuple[tuple[str, str], ...] = LINEAGE,
+) -> str:
+    def git(*args: str) -> str:
+        return subprocess.check_output(["git", "-C", str(root), *args], text=True).strip()
+
+    if immediate != lineage[-1][0]:
+        raise ValueError("WRONG_IMMEDIATE_CHECKPOINT")
+    previous = None
+    if lineage == LINEAGE:
+        for (tag, _), tag_object in zip(lineage, TAG_OBJECTS, strict=True):
+            if git("rev-parse", tag) != tag_object:
+                raise ValueError("FROZEN_TAG_OBJECT_CHANGED: " + tag)
+    for tag, expected in lineage:
+        if git("rev-parse", tag + "^{commit}") != expected:
+            raise ValueError("FROZEN_TAG_CHANGED: " + tag)
+        if previous:
+            git("merge-base", "--is-ancestor", previous, expected)
+        previous = expected
+    checkpoint = lineage[-1][1]
+    for ref in ("HEAD", "origin/main"):
+        git("merge-base", "--is-ancestor", checkpoint, ref)
+    return checkpoint

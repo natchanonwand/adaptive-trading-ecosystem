@@ -10,12 +10,16 @@ from pathlib import Path
 from uuid import UUID
 
 from trading_ecosystem.tester.adapter import configuration_text
+from trading_ecosystem.tester.checkpoint import verify_checkpoint
 from trading_ecosystem.tester.contracts import Configuration
 
+STOPPED_REPORT_SHA = (
+    "386a5dbd4a5fbf061186a842f74f333d7ddea302033d20cd5188e7f1bde8be82"  # pragma: allowlist secret
+)
 BASE = "e83c41b3d41704c276f98b0912439d13400eb490"  # pragma: allowlist secret
 ORIGINAL = "ec87ad23a1bbb805f033af59cf2e9991af755191"  # pragma: allowlist secret
-CHECKPOINT = "3a35373a7d022fe61a7289a18c33243a8f8fb178"  # pragma: allowlist secret
-# Phase 5B.0.1 permits only this readiness correction and its verification/docs.
+CHECKPOINT = "a76d896ac031c85951b300d6fa946b93f084ab70"  # pragma: allowlist secret
+# Phase 5B.0.2 permits only readiness contracts, UX, migration and their checks.
 FIX_FILES = {
     "src/trading_ecosystem/workbench/contracts.py",
     "src/trading_ecosystem/workbench/store.py",
@@ -30,6 +34,34 @@ FIX_FILES = {
     "docs/PHASE5_B_AUTOMATED_BASELINE.md",
     "PHASE5_B_0_1_REPORT.md",
 }
+FIX_FILES.update(
+    {
+        "src/trading_ecosystem/tester/readiness.py",
+        "src/trading_ecosystem/tester/checkpoint.py",
+        "src/trading_ecosystem/tester/store.py",
+        "src/trading_ecosystem/tester/api.py",
+        "src/trading_ecosystem/tester/adapter.py",
+        "migrations/baseline/versions/0002_readiness.py",
+        "dashboard/src/workbench/ReadinessPanel.tsx",
+        "dashboard/src/workbench/Workbench.tsx",
+        "dashboard/src/workbench/api.ts",
+        "dashboard/tests/readiness.test.tsx",
+        "tests/test_phase5b_readiness.py",
+        "tests/integration/test_baseline_readiness.py",
+        "PHASE5_B_0_2_REPORT.md",
+        "PHASE5_B1_ACCEPTANCE_REPORT.md",
+    }
+)
+FIX_FILES.difference_update(
+    {
+        "src/trading_ecosystem/workbench/contracts.py",
+        "src/trading_ecosystem/workbench/store.py",
+        "src/trading_ecosystem/workbench/api.py",
+        "tests/integration/test_workbench.py",
+        "dashboard/tests/baseline.test.tsx",
+        "PHASE5_B_0_1_REPORT.md",
+    }
+)
 CHANGED = {
     "src/trading_ecosystem/workbench/__main__.py",
     "dashboard/src/workbench/Workbench.tsx",
@@ -57,14 +89,18 @@ NEW = {
 }
 
 
+NEW.update(FIX_FILES - CHANGED)
+
+
 def git(*args: str) -> str:
     return subprocess.check_output(["git", *args], text=True).strip()
 
 
 def main() -> None:
-    for ref in ("HEAD", "phase5b-tooling-v0.1.0^{commit}", "origin/main"):
-        if git("rev-parse", ref) != CHECKPOINT:
-            raise ValueError("FROZEN_CHECKPOINT_CHANGED: " + ref)
+    verify_checkpoint(Path.cwd())
+    diagnostic = Path("PHASE5_B1_ACCEPTANCE_REPORT.md")
+    if hashlib.sha256(diagnostic.read_bytes()).hexdigest() != STOPPED_REPORT_SHA:
+        raise ValueError("STOPPED_ACCEPTANCE_REPORT_CHANGED")
     if git("rev-parse", "phase5a-v0.1.1^{commit}") != BASE:
         raise ValueError("CORRECTIVE_PHASE5A_TAG_CHANGED")
     subprocess.check_call(["git", "merge-base", "--is-ancestor", BASE, CHECKPOINT])

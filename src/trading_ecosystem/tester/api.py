@@ -8,10 +8,9 @@ from uuid import UUID
 from sqlalchemy import Engine
 from sqlalchemy.exc import SQLAlchemyError
 
-from trading_ecosystem.tester import store
+from trading_ecosystem.tester import readiness, store
 from trading_ecosystem.tester.contracts import Configuration
 from trading_ecosystem.tester.service import Busy, Service
-from trading_ecosystem.workbench import store as onboarding
 from trading_ecosystem.workbench.api import Handler, WorkbenchServer
 
 
@@ -41,7 +40,7 @@ class BaselineHandler(Handler):
     def do_GET(self) -> None:
         parsed = urlsplit(self.path)
         path = parsed.path
-        if not path.startswith(("/workbench-api/baselines", "/workbench-api/projects/")):
+        if not path.startswith(("/workbench-api/baseline", "/workbench-api/projects/")):
             super().do_GET()
             return
         if not self.local():
@@ -51,11 +50,20 @@ class BaselineHandler(Handler):
             with self.server.engine.connect() as conn:
                 value: object
                 if path.startswith("/workbench-api/projects/") and not parsed.query:
-                    detail = onboarding.detail(
+                    detail = readiness.detail(
                         conn, self.server.artifacts, UUID(path.rsplit("/", 1)[1])
                     )
                     detail["baseline_enabled"] = True
                     value = detail
+                elif path == "/workbench-api/baseline-configurations":
+                    query = parse_qs(parsed.query, strict_parsing=True)
+                    if set(query) != {"project_id"} or len(query["project_id"]) != 1:
+                        raise ValueError("INVALID_QUERY")
+                    value = {
+                        "items": readiness.list_configurations(conn, UUID(query["project_id"][0]))
+                    }
+                elif path.startswith("/workbench-api/baseline-configurations/"):
+                    value = readiness.get_configuration(conn, UUID(path.rsplit("/", 1)[1]))
                 elif path == "/workbench-api/baselines":
                     query = parse_qs(parsed.query, strict_parsing=True)
                     if set(query) != {"project_id"} or len(query["project_id"]) != 1:
@@ -79,7 +87,7 @@ class BaselineHandler(Handler):
             self.send(503, {"error": "BASELINE_STORAGE_UNAVAILABLE"})
 
     def do_POST(self) -> None:
-        if not self.path.startswith("/workbench-api/baselines"):
+        if not self.path.startswith(("/workbench-api/baseline", "/workbench-api/authorization/")):
             super().do_POST()
             return
         if not self.local(write=True):
@@ -95,6 +103,23 @@ class BaselineHandler(Handler):
                 raise ValueError("INVALID_SIZE")
             self.connection.settimeout(15)
             body = json.loads(self.rfile.read(length))
+            if self.path.startswith("/workbench-api/authorization/"):
+                project_id = UUID(self.path.rsplit("/", 1)[1])
+                with self.server.engine.begin() as conn:
+                    record = readiness.attest(
+                        conn, project_id, readiness.Authorization.model_validate(body)
+                    )
+                self.send(201, record.model_dump(mode="json"))
+                return
+            if self.path == "/workbench-api/baseline-configurations":
+                with self.server.engine.begin() as conn:
+                    saved = readiness.save_configuration(
+                        conn,
+                        self.server.artifacts,
+                        readiness.BaselineConfiguration.model_validate(body),
+                    )
+                self.send(201, saved)
+                return
             if self.path == "/workbench-api/baselines":
                 config = Configuration.model_validate(body)
                 with self.server.engine.begin() as conn:

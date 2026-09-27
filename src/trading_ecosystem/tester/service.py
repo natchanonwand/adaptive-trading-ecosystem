@@ -73,6 +73,9 @@ class Service:
                                 diagnostic="INTERRUPTED_OWNER; NO_AUTOMATIC_RETRY",
                             )
                 with self.engine.begin() as conn:
+                    from trading_ecosystem.tester.readiness import require_execution_contract
+
+                    require_execution_contract(conn, store.get(conn, run_id).config)
                     queued = store.advance(conn, run_id, State.QUEUED)
                 self.cancel_event = threading.Event()
                 self.active_id = run_id
@@ -142,6 +145,12 @@ class Service:
             if run.declared_tester_access == "UNAVAILABLE":
                 raise Blocked(State.BLOCKED_TESTER_ACCESS)
             with self.engine.connect() as conn:
+                from trading_ecosystem.tester.readiness import require_execution_contract
+
+                try:
+                    require_execution_contract(conn, run.config)
+                except ValueError:
+                    raise Blocked(State.BLOCKED_AUTHORIZATION_PROVENANCE) from None
                 p = store.project(conn, run.config.project_id)
                 try:
                     artifact = onboarding.get_artifact(conn, run.artifact_id)

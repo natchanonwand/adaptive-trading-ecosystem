@@ -1,3 +1,4 @@
+import { ReadinessPanel } from './ReadinessPanel';
 import { useEffect, useState } from 'react';
 import { BaselinePanel } from './BaselinePanel';
 import {
@@ -351,6 +352,7 @@ function Wizard({ done, cancel }: { done: (id: string) => void; cancel: () => vo
                 onChange={(e) => void add(e.target.files?.[0], 'EA')}
               />
             </label>
+
             <Evidence artifact={ea} title="EA artifact" />
             <label>
               Optional manual (.pdf)
@@ -514,6 +516,7 @@ function Wizard({ done, cancel }: { done: (id: string) => void; cancel: () => vo
               License: {label(candidate.license_status)} · Tester:{' '}
               {label(candidate.tester_access_status)}
             </p>
+
             <Evidence artifact={ea} title="EA artifact" />
             <Evidence artifact={manual} title="Manual" />
             <details>
@@ -609,6 +612,12 @@ function ProjectDetail({ id, back }: { id: string; back: () => void }) {
         </div>
         <span className="wb-badge">{label(p.status)}</span>
       </div>
+      {data.acceptance_readiness && (
+        <p role="status">
+          Acceptance execution: {data.acceptance_readiness.status} ·{' '}
+          {data.acceptance_readiness.reasons.join(', ')}
+        </p>
+      )}
       <nav className="wb-tabs" aria-label="Project sections">
         {['Overview', 'Baseline', 'Experiments', 'Behavior', 'Forward', 'Evidence'].map((name) => (
           <button
@@ -658,6 +667,7 @@ function ProjectDetail({ id, back }: { id: string; back: () => void }) {
             <p>
               Candidate ID: <code>{p.candidate_id}</code>
             </p>
+            {data.readiness_enabled && <ReadinessPanel detail={data} source onChange={setData} />}
             <Evidence artifact={ea} title="EA artifact" />
             <Evidence artifact={manual} title="Manual" />
             <p>
@@ -671,7 +681,12 @@ function ProjectDetail({ id, back }: { id: string; back: () => void }) {
             <p>Status: {label(p.status)}</p>
           </>
         )}
-        {tab === 'Baseline' && data.baseline_enabled && <BaselinePanel detail={data} />}
+        {tab === 'Baseline' && data.readiness_enabled && (
+          <ReadinessPanel detail={data} onChange={setData} />
+        )}
+        {tab === 'Baseline' && data.baseline_enabled && !data.readiness_enabled && (
+          <BaselinePanel detail={data} />
+        )}
         {tab === 'Baseline' && !data.baseline_enabled && (
           <>
             <span className="wb-badge">{data.baseline_status}</span>
