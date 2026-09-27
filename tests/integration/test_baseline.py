@@ -227,8 +227,8 @@ def test_preflight_never_launches(
     run = ready(
         database,
         tmp_path / "artifacts",
-        "UNKNOWN" if problem == "license" else "USER_ATTESTED",
-        "UNKNOWN" if problem == "access" else "USER_CONFIRMED",
+        "NOT_AUTHORIZED" if problem == "license" else "USER_ATTESTED",
+        "UNAVAILABLE" if problem == "access" else "USER_CONFIRMED",
     )
     with database.connect() as conn:
         artifact = onboarding.get_artifact(conn, run.artifact_id)
@@ -239,6 +239,40 @@ def test_preflight_never_launches(
         path.unlink()
     service = Service(database, tmp_path / "artifacts", tmp_path / "evidence")
     assert finish(service, run.config.baseline_run_id).status == status
+
+
+@pytest.mark.parametrize(
+    "mode,state,observed",
+    [
+        ("success", State.COMPLETE, "SUCCESS"),
+        ("license", State.BLOCKED_LICENSE, "LICENSE_BLOCKED"),
+        ("access", State.BLOCKED_TESTER_ACCESS, "TESTER_ACCESS_BLOCKED"),
+        ("init", State.INITIALIZATION_FAILED, "INITIALIZATION_FAILED"),
+    ],
+)
+def test_unknown_declarations_are_preserved_after_simulated_observation(
+    database: Engine,
+    tmp_path: Path,
+    mode: str,
+    state: State,
+    observed: str,
+) -> None:
+    run = ready(database, tmp_path / "artifacts", "UNKNOWN", "UNKNOWN")
+    assert run.status == State.READY and run.observed_tester_status == "UNKNOWN"
+    started = Event()
+    service = Service(
+        database,
+        tmp_path / "artifacts",
+        tmp_path / "evidence",
+        Adapter(environment(tmp_path), simulated(mode, started)),
+    )
+    final = finish(service, run.config.baseline_run_id)
+    assert started.is_set()  # Synthetic process callable only; never native MT5/EX5.
+    assert final.status == state and final.observed_tester_status == observed
+    assert final.declared_license_status == final.declared_tester_access == "UNKNOWN"
+    with database.connect() as conn:
+        candidate = onboarding.get_candidate(conn, run.candidate_id)
+        assert candidate.license_status == candidate.tester_access_status == "UNKNOWN"
 
 
 def test_single_active_and_cancel(database: Engine, tmp_path: Path) -> None:

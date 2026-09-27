@@ -15,7 +15,7 @@ from typing import Any
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import Engine, text
+from sqlalchemy import Engine, text, update
 
 from trading_ecosystem.workbench import store
 from trading_ecosystem.workbench.api import WorkbenchServer
@@ -175,9 +175,13 @@ def test_source_required() -> None:
 @pytest.mark.parametrize(
     "license_status,bound,tester,status",
     [
-        ("UNKNOWN", False, "UNKNOWN", Status.BLOCKED_LICENSE),
+        ("UNKNOWN", False, "UNKNOWN", Status.BLOCKED_SYMBOL),
         ("USER_ATTESTED", False, "USER_CONFIRMED", Status.BLOCKED_SYMBOL),
-        ("USER_ATTESTED", True, "UNKNOWN", Status.BLOCKED_TESTER),
+        ("USER_ATTESTED", True, "UNKNOWN", Status.BASELINE_READY),
+        ("UNKNOWN", True, "UNKNOWN", Status.BASELINE_READY),
+        ("UNKNOWN", True, "USER_CONFIRMED", Status.BASELINE_READY),
+        ("NOT_AUTHORIZED", True, "UNKNOWN", Status.BLOCKED_LICENSE),
+        ("UNKNOWN", True, "UNAVAILABLE", Status.BLOCKED_TESTER_ACCESS),
         ("USER_ATTESTED", True, "USER_CONFIRMED", Status.BASELINE_READY),
     ],
 )
@@ -300,10 +304,63 @@ def test_http_onboarding(server: WorkbenchServer) -> None:
     assert code == 201
     req = request(candidate=CandidateInput(artifact_id=artifact["artifact_id"]))
     code, project = http(server, "/workbench-api/projects", req.model_dump(mode="json"))
-    assert code == 201 and project["status"] == "BLOCKED_LICENSE"
+    assert code == 201 and project["status"] == "BLOCKED_SYMBOL"
     assert http(server, "/workbench-api/projects/" + project["project_id"])[0] == 200
     assert http(server, "/workbench-api/candidates/" + project["candidate_id"])[0] == 200
     assert http(server, "/workbench-api/projects")[0] == 200
+
+
+@pytest.mark.parametrize("legacy", [Status.BLOCKED_LICENSE, Status.BLOCKED_TESTER])
+def test_legacy_unknown_readiness_projection_preserves_history(
+    database: Engine,
+    tmp_path: Path,
+    legacy: Status,
+) -> None:
+    with database.begin() as conn:
+        artifact = store.register_artifact(conn, tmp_path, "unknown.ex5", "EA", b"opaque fixture")
+        p = store.create_project(
+            conn,
+            tmp_path,
+            request(
+                candidate=CandidateInput(artifact_id=artifact.artifact_id),
+                broker_binding=Binding(
+                    broker_name="demo",
+                    canonical_asset="XAUUSD",
+                    broker_symbol="XAUUSDm",
+                    timeframe="H1",
+                    symbol_confirmed=True,
+                ),
+            ),
+        )
+        old = p.model_dump(mode="json")
+        old.update(
+            status=legacy.value, status_history=["DRAFT", "CANDIDATE_REGISTERED", legacy.value]
+        )
+        conn.execute(
+            update(store.projects).where(store.projects.c.id == str(p.project_id)).values(body=old)
+        )
+        current = store.detail(conn, tmp_path, p.project_id)
+        assert current["project"]["status"] == "BASELINE_READY"
+        assert current["baseline_status"] == "READY"
+        assert current["candidate"]["license_status"] == "UNKNOWN"
+        assert current["candidate"]["tester_access_status"] == "UNKNOWN"
+        assert current["project"]["status_history"] == old["status_history"]
+        items = []
+        offset: int | None = 0
+        while offset is not None:
+            page = store.list_projects(conn, offset, root=tmp_path)
+            items.extend(page["items"])
+            offset = page["next_offset"]
+        listed = next(v for v in items if v["project_id"] == str(p.project_id))
+        assert listed["status"] == "BASELINE_READY"
+        stored = (
+            conn.execute(store.projects.select().where(store.projects.c.id == str(p.project_id)))
+            .mappings()
+            .one()["body"]
+        )
+        assert stored == old
+        store.artifact_path(tmp_path, artifact).write_bytes(b"tampered")
+        assert store.detail(conn, tmp_path, p.project_id)["baseline_status"] == "NOT_READY"
 
 
 @pytest.mark.parametrize(

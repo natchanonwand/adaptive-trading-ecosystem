@@ -229,12 +229,18 @@ def detail(conn: Connection, root: Path, project_id: UUID) -> dict[str, Any]:
             if artifact_id
             else "NOT_PROVIDED"
         )
+    # Readiness is a current projection, not a rewrite of historical declarations/history.
+    current_status = readiness(candidate, project.broker_binding)
+    if current_status == Status.BASELINE_READY and (
+        verification["ea"] != "VERIFIED" or verification["manual"] == "FAILED"
+    ):
+        current_status = Status.DRAFT
     return dict(
-        project=body,
+        project={**body, "status": current_status.value},
         candidate=candidate.model_dump(mode="json"),
         verification=verification,
         baseline_status="READY"
-        if project.status == Status.BASELINE_READY
+        if current_status == Status.BASELINE_READY
         and verification["ea"] == "VERIFIED"
         and verification["manual"] != "FAILED"
         else "NOT_READY",
@@ -242,7 +248,11 @@ def detail(conn: Connection, root: Path, project_id: UUID) -> dict[str, Any]:
     )
 
 
-def list_projects(conn: Connection, offset: int = 0) -> dict[str, Any]:
+def list_projects(
+    conn: Connection,
+    offset: int = 0,
+    root: Path = Path(".local/artifacts/research_projects"),
+) -> dict[str, Any]:
     rows = list(
         conn.execute(
             select(projects.c.body).order_by(projects.c.id).offset(offset).limit(51)
@@ -251,5 +261,6 @@ def list_projects(conn: Connection, offset: int = 0) -> dict[str, Any]:
     items = []
     for row in rows[:50]:
         candidate = get_candidate(conn, UUID(row["candidate_id"]))
-        items.append({**row, "product_name": candidate.product_name})
+        current = detail(conn, root, UUID(row["project_id"]))
+        items.append({**current["project"], "product_name": candidate.product_name})
     return dict(items=items, next_offset=offset + 50 if len(rows) > 50 else None)

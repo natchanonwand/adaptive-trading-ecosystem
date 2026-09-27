@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { BaselinePanel, type BaselineRun } from '../src/workbench/BaselinePanel';
 import { type Detail } from '../src/workbench/api';
+import { Workbench } from '../src/workbench/Workbench';
 
 const detail: Detail = {
   baseline_enabled: true,
@@ -74,6 +75,29 @@ const saved: BaselineRun = {
 };
 beforeEach(() => {
   vi.restoreAllMocks();
+});
+
+it('shows baseline ready with unknown declarations and never automatically starts', async () => {
+  const unknown: Detail = {
+    ...detail,
+    candidate: { ...detail.candidate, license_status: 'UNKNOWN', tester_access_status: 'UNKNOWN' },
+  };
+  const fetcher = vi.fn(async (url: string) => ({
+    ok: true,
+    json: async () => (url.includes('/projects/') ? unknown : { items: [] }),
+  }));
+  vi.stubGlobal('fetch', fetcher);
+  window.history.replaceState(null, '', '/workbench#/projects/project');
+  render(<Workbench />);
+  expect(await screen.findByText('BASELINE READY', { selector: '.wb-badge' })).toBeVisible();
+  expect(screen.queryByText('BLOCKED LICENSE')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Baseline' }));
+  expect(await screen.findByText(/UNKNOWN means not yet verified/)).toBeVisible();
+  expect(screen.getByText(/Declared license: UNKNOWN/)).toHaveTextContent(
+    'Declared tester access: UNKNOWN',
+  );
+  expect(screen.getByRole('button', { name: 'Run Baseline' })).toBeEnabled();
+  expect(fetcher.mock.calls.some(([url]) => url.endsWith('/start'))).toBe(false);
 });
 function mock(status = 'READY', list = false) {
   const run = { ...saved, status };

@@ -14,14 +14,35 @@ from trading_ecosystem.tester.contracts import Configuration
 
 BASE = "e83c41b3d41704c276f98b0912439d13400eb490"  # pragma: allowlist secret
 ORIGINAL = "ec87ad23a1bbb805f033af59cf2e9991af755191"  # pragma: allowlist secret
+CHECKPOINT = "3a35373a7d022fe61a7289a18c33243a8f8fb178"  # pragma: allowlist secret
+# Phase 5B.0.1 permits only this readiness correction and its verification/docs.
+FIX_FILES = {
+    "src/trading_ecosystem/workbench/contracts.py",
+    "src/trading_ecosystem/workbench/store.py",
+    "src/trading_ecosystem/workbench/api.py",
+    "src/trading_ecosystem/tester/contracts.py",
+    "src/trading_ecosystem/tester/service.py",
+    "tests/integration/test_workbench.py",
+    "tests/integration/test_baseline.py",
+    "dashboard/src/workbench/BaselinePanel.tsx",
+    "dashboard/tests/baseline.test.tsx",
+    "scripts/verify_phase5_b_scope.py",
+    "docs/PHASE5_B_AUTOMATED_BASELINE.md",
+    "PHASE5_B_0_1_REPORT.md",
+}
 CHANGED = {
     "src/trading_ecosystem/workbench/__main__.py",
     "dashboard/src/workbench/Workbench.tsx",
     "dashboard/src/workbench/api.ts",
+    "src/trading_ecosystem/workbench/contracts.py",
+    "src/trading_ecosystem/workbench/store.py",
+    "src/trading_ecosystem/workbench/api.py",
+    "tests/integration/test_workbench.py",
 }
 NEW = {
     "alembic-baseline.ini",
     "PHASE5_B_REPORT.md",
+    "PHASE5_B_0_1_REPORT.md",
     "docs/PHASE5_B_AUTOMATED_BASELINE.md",
     "scripts/verify_phase5_b.ps1",
     "scripts/verify_phase5_b_scope.py",
@@ -41,14 +62,26 @@ def git(*args: str) -> str:
 
 
 def main() -> None:
-    for ref in ("HEAD", "phase5a-v0.1.1^{commit}", "origin/main"):
-        if git("rev-parse", ref) != BASE:
+    for ref in ("HEAD", "phase5b-tooling-v0.1.0^{commit}", "origin/main"):
+        if git("rev-parse", ref) != CHECKPOINT:
             raise ValueError("FROZEN_CHECKPOINT_CHANGED: " + ref)
+    if git("rev-parse", "phase5a-v0.1.1^{commit}") != BASE:
+        raise ValueError("CORRECTIVE_PHASE5A_TAG_CHANGED")
+    subprocess.check_call(["git", "merge-base", "--is-ancestor", BASE, CHECKPOINT])
+    fixes = set(git("diff", "--name-only", CHECKPOINT).splitlines())
+    fixes.update(git("ls-files", "--others", "--exclude-standard").splitlines())
+    if fixes - FIX_FILES:
+        raise ValueError("UNEXPECTED_READINESS_FIX_CHANGE: " + repr(sorted(fixes - FIX_FILES)))
     if git("rev-parse", "phase5a-v0.1.0^{commit}") != ORIGINAL:
         raise ValueError("ORIGINAL_PHASE5A_TAG_CHANGED")
     changed = set(git("diff", "--name-only", BASE).splitlines())
-    if changed - CHANGED:
-        raise ValueError("UNEXPECTED_FROZEN_CHANGE: " + repr(sorted(changed - CHANGED)))
+    unexpected = {
+        name
+        for name in changed - CHANGED - NEW
+        if not name.startswith(("src/trading_ecosystem/tester/", "migrations/baseline/"))
+    }
+    if unexpected:
+        raise ValueError("UNEXPECTED_FROZEN_CHANGE: " + repr(sorted(unexpected)))
     new = git("ls-files", "--others", "--exclude-standard").splitlines()
     for name in new:
         if name not in NEW and not name.startswith(

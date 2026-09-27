@@ -76,7 +76,7 @@ class Handler(BaseHTTPRequestHandler):
                         offset = int(query.get("offset", ["0"])[0])
                         if not 0 <= offset <= 100000:
                             raise ValueError("INVALID_QUERY")
-                        value = store.list_projects(conn, offset)
+                        value = store.list_projects(conn, offset, self.server.artifacts)
                     elif path.startswith("/workbench-api/projects/") and not parsed.query:
                         value = store.detail(
                             conn, self.server.artifacts, UUID(path.rsplit("/", 1)[1])

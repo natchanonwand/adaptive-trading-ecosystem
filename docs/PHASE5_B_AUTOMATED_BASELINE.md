@@ -117,9 +117,14 @@ INITIALIZATION_FAILED, TESTER_FAILED, TIMEOUT, REPORT_MISSING,
 REPORT_PARSE_FAILED, CANCELLED. Terminal states cannot transition to another run.
 
 Declared license/tester access are snapshots of the user's statements; observed
-execution status is separate. Unknown declarations block execution. Known native
+execution status is separate. UNKNOWN means not yet verified and does not block
+readiness or preflight by itself. Explicit NOT_AUTHORIZED/UNAVAILABLE declarations
+block their respective license/tester-access paths. Known native
 license/tester/init failures become typed failures; unfamiliar failures remain
-generic or unavailable rather than being guessed.
+generic or unavailable rather than being guessed. Observed tester denial records
+TESTER_ACCESS_BLOCKED separately from LICENSE_BLOCKED; neither changes declarations.
+Current list/detail readiness is derived from declarations, binding and artifact
+verification without rewriting old stored project history or run evidence.
 
 `Model=4` is insufficient evidence of fidelity. Current qualification requires
 native log text reporting `100% real ticks`, with no lower percentages or known
@@ -183,8 +188,11 @@ responses do not echo input values. There is no generic command/path endpoint.
 Run `scripts/verify_phase5_b.ps1` with the existing dedicated local PostgreSQL
 test administrator URL. It calls the unchanged Phase 5A complete regression gate,
 plus Phase 5B scope and evidence checks. All previous tests remain intact. Scope
-allows only three existing integration files to change and verifies the other
-367 Phase 5A snapshot files byte-for-byte, both Phase 5A commits, prior evidence,
+originally allowed three existing integration files to change. The Phase 5B.0.1
+readiness correction additionally permits the three Workbench readiness/API modules
+and their existing integration test, while pinning the frozen Phase 5B checkpoint
+and an exact correction-file allowlist. It verifies the other 363 Phase 5A
+snapshot files byte-for-byte, both Phase 5A commits, prior evidence,
 no tracked EA binaries, ignored runtime artifacts and tester-only settings.
 
 The isolated portable/offline cache mechanism has not been qualified with a real

@@ -47,6 +47,7 @@ class Status(StrEnum):
     BLOCKED_LICENSE = "BLOCKED_LICENSE"
     BLOCKED_SYMBOL = "BLOCKED_SYMBOL"
     BLOCKED_TESTER = "BLOCKED_TESTER"
+    BLOCKED_TESTER_ACCESS = "BLOCKED_TESTER_ACCESS"
     BLOCKED_ATTRIBUTION = "BLOCKED_ATTRIBUTION"
     FAILED_BASELINE = "FAILED_BASELINE"
 
@@ -160,11 +161,13 @@ def transition(current: Status, target: Status) -> Status:
             Status.BLOCKED_LICENSE,
             Status.BLOCKED_SYMBOL,
             Status.BLOCKED_TESTER,
+            Status.BLOCKED_TESTER_ACCESS,
             Status.BLOCKED_ATTRIBUTION,
         },
         Status.BLOCKED_LICENSE: {Status.CANDIDATE_REGISTERED},
         Status.BLOCKED_SYMBOL: {Status.CANDIDATE_REGISTERED},
         Status.BLOCKED_TESTER: {Status.CANDIDATE_REGISTERED},
+        Status.BLOCKED_TESTER_ACCESS: {Status.CANDIDATE_REGISTERED},
         Status.BLOCKED_ATTRIBUTION: {Status.CANDIDATE_REGISTERED},
     }
     if target not in allowed.get(current, set()):
@@ -175,10 +178,10 @@ def transition(current: Status, target: Status) -> Status:
 def readiness(candidate: CandidateInput, binding: Binding) -> Status:
     if candidate.artifact_id is None:
         return Status.DRAFT
-    if candidate.license_status != "USER_ATTESTED":
+    if candidate.license_status == "NOT_AUTHORIZED":
         return Status.BLOCKED_LICENSE
     if not binding.ready():
         return Status.BLOCKED_SYMBOL
-    if candidate.tester_access_status != "USER_CONFIRMED":
-        return Status.BLOCKED_TESTER
+    if candidate.tester_access_status == "UNAVAILABLE":
+        return Status.BLOCKED_TESTER_ACCESS
     return Status.BASELINE_READY

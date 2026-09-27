@@ -168,6 +168,17 @@ export function BaselinePanel({ detail }: { detail: Detail }) {
       <p>
         Candidate: {detail.candidate.product_name} · {detail.project.candidate_id}
       </p>
+      <p>
+        Declared license: {detail.candidate.license_status} · Declared tester access:{' '}
+        {detail.candidate.tester_access_status}
+      </p>
+      {(detail.candidate.license_status === 'UNKNOWN' ||
+        detail.candidate.tester_access_status === 'UNKNOWN') && (
+        <p className="muted">
+          UNKNOWN means not yet verified. Readiness does not establish license or tester permission;
+          execution evidence is recorded separately.
+        </p>
+      )}
       <p className="small">
         Artifact SHA-256: <code>{detail.candidate.artifact_sha256 || 'UNAVAILABLE'}</code>
       </p>

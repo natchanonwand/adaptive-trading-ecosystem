@@ -89,7 +89,7 @@ class Run(FrozenModel):
     declared_license_status: str
     declared_tester_access: str
     observed_tester_status: Literal[
-        "UNKNOWN", "SUCCESS", "LICENSE_BLOCKED", "INITIALIZATION_FAILED"
+        "UNKNOWN", "SUCCESS", "LICENSE_BLOCKED", "TESTER_ACCESS_BLOCKED", "INITIALIZATION_FAILED"
     ] = "UNKNOWN"
     status: State = State.READY
     history: tuple[State, ...] = (State.READY,)

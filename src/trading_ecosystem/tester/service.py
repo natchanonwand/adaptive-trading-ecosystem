@@ -137,9 +137,9 @@ class Service:
             root = self.root / "runs" / str(run.config.project_id) / str(run_id)
             root.mkdir(parents=True, exist_ok=False)
             evidence.write_json(root / "configuration.json", run.model_dump(mode="json"))
-            if run.declared_license_status != "USER_ATTESTED":
+            if run.declared_license_status == "NOT_AUTHORIZED":
                 raise Blocked(State.BLOCKED_LICENSE)
-            if run.declared_tester_access != "USER_CONFIRMED":
+            if run.declared_tester_access == "UNAVAILABLE":
                 raise Blocked(State.BLOCKED_TESTER_ACCESS)
             with self.engine.connect() as conn:
                 p = store.project(conn, run.config.project_id)
@@ -199,9 +199,13 @@ class Service:
                     "LICENSE_BLOCKED"
                     if failure == State.BLOCKED_LICENSE
                     else (
-                        "INITIALIZATION_FAILED"
-                        if failure == State.INITIALIZATION_FAILED
-                        else "UNKNOWN"
+                        "TESTER_ACCESS_BLOCKED"
+                        if failure == State.BLOCKED_TESTER_ACCESS
+                        else (
+                            "INITIALIZATION_FAILED"
+                            if failure == State.INITIALIZATION_FAILED
+                            else "UNKNOWN"
+                        )
                     )
                 )
                 raise Blocked(failure)
