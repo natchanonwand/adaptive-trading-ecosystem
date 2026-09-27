@@ -5,7 +5,7 @@ from pathlib import Path
 
 from trading_ecosystem.config.settings import load_settings
 from trading_ecosystem.persistence.database import create_database_engine
-from trading_ecosystem.workbench.api import WorkbenchServer
+from trading_ecosystem.tester.api import BaselineServer
 
 
 def main() -> None:
@@ -17,7 +17,7 @@ def main() -> None:
         raise ValueError("LOCAL_DATABASE_AND_VALID_PORT_REQUIRED")
     engine = create_database_engine(settings.database_url)
     try:
-        with WorkbenchServer(
+        with BaselineServer(
             engine, Path(".local/artifacts/research_projects"), Path("dashboard/dist"), args.port
         ) as server:
             print(

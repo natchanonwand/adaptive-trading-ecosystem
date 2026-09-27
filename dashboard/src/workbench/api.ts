@@ -39,6 +39,7 @@ export type Project = {
   product_name?: string;
 };
 export type Detail = {
+  baseline_enabled?: boolean;
   project: Project;
   candidate: Candidate;
   verification: Record<string, string>;

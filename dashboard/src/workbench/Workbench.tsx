@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { BaselinePanel } from './BaselinePanel';
 import {
   request,
   upload,
@@ -272,7 +273,8 @@ function Wizard({ done, cancel }: { done: (id: string) => void; cancel: () => vo
               ))}
             </div>
             <p className="muted">
-              Onboard files and metadata. No EA execution or automated testing is enabled.
+              Onboarding stores files and metadata. Baseline execution requires separate
+              confirmation.
             </p>
           </>
         )}
@@ -669,7 +671,8 @@ function ProjectDetail({ id, back }: { id: string; back: () => void }) {
             <p>Status: {label(p.status)}</p>
           </>
         )}
-        {tab === 'Baseline' && (
+        {tab === 'Baseline' && data.baseline_enabled && <BaselinePanel detail={data} />}
+        {tab === 'Baseline' && !data.baseline_enabled && (
           <>
             <span className="wb-badge">{data.baseline_status}</span>
             <p>No baseline results have been generated.</p>
