@@ -127,8 +127,9 @@ it('shows the research terminal blocker independently of candidate readiness', (
         ...detail,
         acceptance_readiness: { status: 'READY', reasons: [] },
         research_environment: {
-          status: 'BOOTSTRAP_UNVERIFIED',
-          native_bootstrap: 'NOT_VERIFIED',
+          status: 'BOOTSTRAP_TIMEOUT',
+          native_bootstrap: 'BOOTSTRAP_TIMEOUT',
+          last_probe: 'synthetic-handshake',
           symbol: 'XAUUSDm',
           binding: {
             terminal_executable: 'C:/Synthetic/terminal64.exe',
@@ -141,8 +142,9 @@ it('shows the research terminal blocker independently of candidate readiness', (
     />,
   );
   expect(screen.getByRole('region', { name: 'Research Environment' })).toBeInTheDocument();
-  expect(screen.getByText('BOOTSTRAP_UNVERIFIED')).toBeInTheDocument();
-  expect(screen.getByText(/native bootstrap: NOT_VERIFIED/)).toBeInTheDocument();
+  expect(screen.getByText('BOOTSTRAP_TIMEOUT')).toBeInTheDocument();
+  expect(screen.getByText(/native bootstrap: BOOTSTRAP_TIMEOUT/)).toBeInTheDocument();
+  expect(screen.getByText('Last Probe: synthetic-handshake')).toBeInTheDocument();
   expect(screen.getByText(/Build 6230/)).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Run Baseline' })).toBeDisabled();
 });

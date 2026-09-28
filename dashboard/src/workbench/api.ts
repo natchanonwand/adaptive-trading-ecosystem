@@ -44,6 +44,7 @@ export type Detail = Partial<Readiness> & {
   research_environment?: {
     status: string;
     native_bootstrap?: string;
+    last_probe?: string | null;
     symbol?: string;
     binding?: {
       terminal_executable: string;

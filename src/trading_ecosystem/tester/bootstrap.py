@@ -45,6 +45,8 @@ def probe(
     root: Path,
     config: Configuration,
     process: Callable[[Path, list[str], Path, float, Event], Outcome] = execute,
+    *,
+    window_seconds: float = 10.0,
 ) -> dict[str, object]:
     result: dict[str, object] = {
         "kind": "ENVIRONMENT_BOOTSTRAP_PROBE",
@@ -96,7 +98,7 @@ def probe(
         config_sha256=hashlib.sha256(ini.read_bytes()).hexdigest(),
         config_validation="PASS",
         configured_timeout_seconds=config.timeout_seconds,
-        probe_timeout_seconds=10,
+        probe_timeout_seconds=window_seconds,
         expert_intentionally_absent=True,
     )
     args = ["/portable", "/config:" + str(ini)]
@@ -104,7 +106,7 @@ def probe(
     try:
         if hashlib.sha256((runtime / exe.name).read_bytes()).hexdigest() != binding.terminal_sha256:
             raise ValueError("PINNED_EXECUTABLE_CHANGED")
-        outcome = process(runtime / exe.name, args, runtime, 10.0, Event())
+        outcome = process(runtime / exe.name, args, runtime, window_seconds, Event())
         result.update(process_created=True, exit_code=outcome.code, timed_out=outcome.timed_out)
         # Survival is not proof of tester initialization; never report acceptance success.
         result["status"] = (

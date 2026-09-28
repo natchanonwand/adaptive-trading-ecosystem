@@ -230,6 +230,7 @@ def validate_config(text: str, cfg: Configuration, server: str) -> None:
 
 
 def binding_status(path: Path, symbol: str = "XAUUSDm") -> dict[str, Any]:
+    last_probe: str | None = None
     if not path.is_file():
         return {"status": "BLOCKED_TERMINAL_NOT_FOUND", "reason": "RESEARCH_BINDING_NOT_CONFIGURED"}
     try:
@@ -249,6 +250,25 @@ def binding_status(path: Path, symbol: str = "XAUUSDm") -> dict[str, Any]:
                 in {"TIMEOUT", "PROCESS_START_FAILED", "PROCESS_EXITED_DURING_BOOTSTRAP"}
             ):
                 status = record["status"]
+        handshake = path.with_name("native-handshake.json")
+        if handshake.is_file():
+            record = json.loads(handshake.read_bytes())
+            if (
+                record.get("terminal_binding_id") == str(binding.terminal_binding_id)
+                and record.get("terminal_sha256") == binding.terminal_sha256
+                and record.get("schema") == "PHASE5B1C_HANDSHAKE_V1"
+                and record.get("baseline_result") is False
+                and record.get("status")
+                in {
+                    "BOOTSTRAP_TIMEOUT",
+                    "BOOTSTRAP_INDETERMINATE",
+                    "PROCESS_START_FAILED",
+                    "PROCESS_EXITED_DURING_BOOTSTRAP",
+                    "CONFIG_REJECTED",
+                }
+            ):
+                status = record["status"]
+                last_probe = str(record.get("probe_id", "UNKNOWN"))
     except EnvironmentError as error:
         status = str(error)
     except (ValueError, OSError):
@@ -256,6 +276,7 @@ def binding_status(path: Path, symbol: str = "XAUUSDm") -> dict[str, Any]:
     return {
         "status": status,
         "native_bootstrap": status,
+        "last_probe": last_probe,
         "symbol": symbol,
         "history_status": "UNKNOWN",
         "real_ticks_status": "UNKNOWN",

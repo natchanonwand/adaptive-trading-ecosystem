@@ -184,6 +184,9 @@ export function ReadinessPanel({
         <section aria-label="Research Environment">
           <h4>Research Environment</h4>
           <p>{data.research_environment.status}</p>
+          {data.research_environment.last_probe && (
+            <p>Last Probe: {data.research_environment.last_probe}</p>
+          )}
           <p>
             Symbol: {data.research_environment.symbol ?? project.broker_binding.broker_symbol};
             native bootstrap: {data.research_environment.native_bootstrap ?? 'NOT_VERIFIED'}

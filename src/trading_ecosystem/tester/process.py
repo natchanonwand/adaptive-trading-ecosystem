@@ -5,6 +5,7 @@ import math
 import os
 import subprocess
 import time
+from collections.abc import Callable
 from ctypes import wintypes as w
 from dataclasses import dataclass
 from pathlib import Path
@@ -71,7 +72,12 @@ class Extended(ctypes.Structure):
 
 
 def execute(
-    executable: Path, arguments: list[str], cwd: Path, timeout: float, cancel: Event
+    executable: Path,
+    arguments: list[str],
+    cwd: Path,
+    timeout: float,
+    cancel: Event,
+    observer: Callable[[int, str], None] | None = None,
 ) -> Outcome:
     if os.name != "nt" or not math.isfinite(timeout) or timeout <= 0:
         raise ValueError("WINDOWS_AND_FINITE_TIMEOUT_REQUIRED")
@@ -145,7 +151,11 @@ def execute(
         if kernel.ResumeThread(info.thread) == 0xFFFFFFFF:
             raise OSError("TESTER_RESUME_FAILED")
         deadline = time.monotonic() + timeout
+        if observer:
+            observer(info.pid, "STARTED")
         while True:
+            if observer:
+                observer(info.pid, "POLL")
             if cancel.is_set():
                 return Outcome(None, cancelled=True)
             if time.monotonic() >= deadline:
@@ -161,7 +171,11 @@ def execute(
     finally:
         # Closing the owned job terminates all descendants, also after timeout/cancel/root exit.
         kernel.CloseHandle(job)
+        if info.process:
+            kernel.WaitForSingleObject(info.process, 5000)
         if info.thread:
             kernel.CloseHandle(info.thread)
         if info.process:
             kernel.CloseHandle(info.process)
+        if observer and info.pid:
+            observer(info.pid, "FINISHED")
