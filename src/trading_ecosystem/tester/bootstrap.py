@@ -7,7 +7,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 from threading import Event
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from trading_ecosystem.tester.adapter import configuration_text
 from trading_ecosystem.tester.contracts import Configuration
@@ -47,10 +47,11 @@ def probe(
     process: Callable[[Path, list[str], Path, float, Event], Outcome] = execute,
     *,
     window_seconds: float = 10.0,
+    probe_id: UUID | None = None,
 ) -> dict[str, object]:
     result: dict[str, object] = {
         "kind": "ENVIRONMENT_BOOTSTRAP_PROBE",
-        "probe_id": str(uuid4()),
+        "probe_id": str(probe_id or uuid4()),
         "process_created": False,
         "baseline_result": False,
         "candidate_staged": False,
@@ -116,6 +117,9 @@ def probe(
         result["status"] = "PROCESS_START_FAILED"
         result["native_error_code"] = getattr(error, "winerror", None)
     diagnostic = logs(runtime)
+    result["expert_intentionally_absent"] = not (
+        runtime / "MQL5/Experts" / (config.baseline_run_id.hex + ".ex5")
+    ).exists()
     (runtime / "diagnostic.txt").write_text(diagnostic, encoding="utf-8", newline="\n")
     result["diagnostic_sha256"] = hashlib.sha256(
         (runtime / "diagnostic.txt").read_bytes()

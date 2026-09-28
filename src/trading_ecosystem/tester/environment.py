@@ -269,6 +269,28 @@ def binding_status(path: Path, symbol: str = "XAUUSDm") -> dict[str, Any]:
             ):
                 status = record["status"]
                 last_probe = str(record.get("probe_id", "UNKNOWN"))
+        no_trade = path.with_name("native-no-trade-final.json")
+        if no_trade.is_file():
+            record = json.loads(no_trade.read_bytes())
+            if (
+                record.get("terminal_binding_id") == str(binding.terminal_binding_id)
+                and record.get("terminal_sha256") == binding.terminal_sha256
+                and record.get("schema") == "PHASE5B1D_NO_TRADE_V1"
+                and record.get("baseline_result") is False
+                and record.get("candidate_staged") is False
+                and record.get("status")
+                in {
+                    "BOOTSTRAP_READY",
+                    "TESTER_INITIALIZED",
+                    "BOOTSTRAP_TIMEOUT",
+                    "PROCESS_START_FAILED",
+                    "PROCESS_EXITED_DURING_BOOTSTRAP",
+                    "BLOCKED_SYMBOL",
+                    "BLOCKED_REAL_TICKS_UNAVAILABLE",
+                }
+            ):
+                status = record["status"]
+                last_probe = str(record.get("probe_id", "UNKNOWN"))
     except EnvironmentError as error:
         status = str(error)
     except (ValueError, OSError):
