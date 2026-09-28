@@ -127,7 +127,9 @@ it('shows the research terminal blocker independently of candidate readiness', (
         ...detail,
         acceptance_readiness: { status: 'READY', reasons: [] },
         research_environment: {
-          status: 'BLOCKED_TESTER_CACHE',
+          status: 'BOOTSTRAP_UNVERIFIED',
+          native_bootstrap: 'NOT_VERIFIED',
+          symbol: 'XAUUSDm',
           binding: {
             terminal_executable: 'C:/Synthetic/terminal64.exe',
             terminal_data_root: 'C:/Synthetic/profile',
@@ -139,7 +141,8 @@ it('shows the research terminal blocker independently of candidate readiness', (
     />,
   );
   expect(screen.getByRole('region', { name: 'Research Environment' })).toBeInTheDocument();
-  expect(screen.getByText('BLOCKED_TESTER_CACHE')).toBeInTheDocument();
+  expect(screen.getByText('BOOTSTRAP_UNVERIFIED')).toBeInTheDocument();
+  expect(screen.getByText(/native bootstrap: NOT_VERIFIED/)).toBeInTheDocument();
   expect(screen.getByText(/Build 6230/)).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Run Baseline' })).toBeDisabled();
 });

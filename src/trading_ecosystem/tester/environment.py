@@ -1,4 +1,4 @@
-"""Research-only terminal binding and fail-closed cache diagnostics; no broker SDK."""
+"""Research binding capabilities; cache filenames never prove symbol/history availability."""
 
 import configparser
 import hashlib
@@ -145,22 +145,12 @@ def validate_binding(binding: TerminalBinding, symbol: str = "XAUUSDm") -> Envir
         raise EnvironmentError("BLOCKED_TESTER_DATA_ROOT")
     if symbol not in {"XAUUSDm", "BTCUSDm", "USTECm"}:
         raise EnvironmentError("BLOCKED_TESTER_CONFIG_INVALID")
-    cache = local_path(data / "bases" / binding.server)
-    required = [cache / "symbols.raw", exe.parent / "metatester64.exe"]
-    for item in required:
-        if not item.is_file():
-            raise EnvironmentError("BLOCKED_TESTER_CACHE")
-        local_path(item)
-        with item.open("rb") as stream:
-            stream.read(1)
-    for folder, suffix in (("history", "*.hcc"), ("ticks", "*.tkc")):
-        files = list((cache / folder / symbol).glob(suffix))
-        if not files:
-            raise EnvironmentError("BLOCKED_TESTER_CACHE")
-        for item in files:
-            local_path(item)
-            with item.open("rb") as stream:
-                stream.read(1)
+    selected, profile = select_terminal([exe], data.parent)
+    if selected != exe or profile != data:
+        raise EnvironmentError("BLOCKED_TERMINAL_IDENTITY_MISMATCH")
+    tester = local_path(exe.parent / "metatester64.exe")
+    if not tester.is_file():
+        raise EnvironmentError("BLOCKED_TERMINAL_NOT_FOUND")
     return Environment(
         terminal_executable=exe,
         terminal_sha256=binding.terminal_sha256,
@@ -169,6 +159,36 @@ def validate_binding(binding: TerminalBinding, symbol: str = "XAUUSDm") -> Envir
         server=binding.server,
         terminal_build=binding.terminal_build,
     )
+
+
+def readonly_compatibility(
+    binding: TerminalBinding, evidence: dict[str, Any], symbol: str
+) -> dict[str, str]:
+    """Reuse sanitized discovery observations, explicitly retaining their historical scope."""
+    latest = evidence.get("latest", {})
+    account = latest.get("ACCOUNT:current", {})
+    if (
+        evidence.get("scope", {}).get("environment") != "DEMO"
+        or account.get("trade_mode") != 0
+        or account.get("server") != binding.server
+        or binding.broker_name.casefold() not in str(account.get("company", "")).casefold()
+    ):
+        raise EnvironmentError("BLOCKED_TERMINAL_IDENTITY_MISMATCH")
+    instrument = latest.get("INSTRUMENT:" + symbol)
+    if (
+        not isinstance(instrument, dict)
+        or instrument.get("broker_symbol") != symbol
+        or instrument.get("metadata", {}).get("name") != symbol
+        or instrument.get("status") not in {"AVAILABLE", "PARTIAL", "RESOLVED"}
+    ):
+        raise EnvironmentError("BLOCKED_SYMBOL")
+    return {
+        "symbol": symbol,
+        "symbol_status": "VERIFIED_HISTORICAL_READ_ONLY",
+        "current_symbol_status": "UNKNOWN",
+        "history_status": "UNKNOWN",
+        "real_ticks_status": "UNKNOWN",
+    }
 
 
 def validate_config(text: str, cfg: Configuration, server: str) -> None:
@@ -215,13 +235,30 @@ def binding_status(path: Path, symbol: str = "XAUUSDm") -> dict[str, Any]:
     try:
         binding = TerminalBinding.model_validate_json(path.read_bytes())
         validate_binding(binding, symbol)
-        status = "READY"
+        # Binding validation is not native tester initialization or history proof.
+        status = "BOOTSTRAP_UNVERIFIED"
+        observed = path.with_name("native-bootstrap.json")
+        if observed.is_file():
+            record = json.loads(observed.read_bytes())
+            if (
+                record.get("terminal_binding_id") == str(binding.terminal_binding_id)
+                and record.get("terminal_sha256") == binding.terminal_sha256
+                and record.get("kind") == "ENVIRONMENT_BOOTSTRAP_PROBE"
+                and record.get("baseline_result") is False
+                and record.get("status")
+                in {"TIMEOUT", "PROCESS_START_FAILED", "PROCESS_EXITED_DURING_BOOTSTRAP"}
+            ):
+                status = record["status"]
     except EnvironmentError as error:
         status = str(error)
     except (ValueError, OSError):
         return {"status": "BLOCKED_TESTER_DATA_ROOT", "reason": "BINDING_INVALID_OR_INACCESSIBLE"}
     return {
         "status": status,
+        "native_bootstrap": status,
+        "symbol": symbol,
+        "history_status": "UNKNOWN",
+        "real_ticks_status": "UNKNOWN",
         "binding": binding.model_dump(mode="json"),
         "scope": "RESEARCH_ONLY_NOT_BROKER_EXECUTION_AUTHORIZATION",
     }

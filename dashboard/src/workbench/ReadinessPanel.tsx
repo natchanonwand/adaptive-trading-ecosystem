@@ -185,6 +185,10 @@ export function ReadinessPanel({
           <h4>Research Environment</h4>
           <p>{data.research_environment.status}</p>
           <p>
+            Symbol: {data.research_environment.symbol ?? project.broker_binding.broker_symbol};
+            native bootstrap: {data.research_environment.native_bootstrap ?? 'NOT_VERIFIED'}
+          </p>
+          <p>
             MT5 Terminal:{' '}
             {data.research_environment.binding?.terminal_executable ?? 'Not configured'}
           </p>

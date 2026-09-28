@@ -3,7 +3,7 @@
 import subprocess
 from pathlib import Path
 
-LINEAGE = (
+LINEAGE: tuple[tuple[str, str], ...] = (
     ("phase5a-v0.1.0", "ec87ad23a1bbb805f033af59cf2e9991af755191"),  # pragma: allowlist secret
     ("phase5a-v0.1.1", "e83c41b3d41704c276f98b0912439d13400eb490"),  # pragma: allowlist secret
     (
@@ -15,17 +15,37 @@ LINEAGE = (
         "a76d896ac031c85951b300d6fa946b93f084ab70",  # pragma: allowlist secret
     ),  # pragma: allowlist secret
 )
-TAG_OBJECTS = (
+TAG_OBJECTS: tuple[str, ...] = (
     "16b4fc3be5ffbaf96f5e7c5e5c77dd5d6ed3a9c0",  # pragma: allowlist secret
     "955cc487710df8773519e791d699b93c4f225012",  # pragma: allowlist secret
     "1d1d57b1dbba78d5a3de2aabe50e9b56e4cfb245",  # pragma: allowlist secret
     "41ea0316671c646c7d903da531008a0cb44d63bd",  # pragma: allowlist secret
 )
 
+LINEAGE += (
+    (
+        "phase5b-tooling-v0.1.2",
+        "27f4e0db60238f9467bc88de80abefa055aef2ae",  # pragma: allowlist secret
+    ),  # pragma: allowlist secret
+    (
+        "phase5b-tooling-v0.1.3",
+        "27f4e0db60238f9467bc88de80abefa055aef2ae",  # pragma: allowlist secret
+    ),  # pragma: allowlist secret
+    (
+        "phase5b-tooling-v0.1.4",
+        "3ad73e72821026da91254100f065f37a390b015e",  # pragma: allowlist secret
+    ),  # pragma: allowlist secret
+)
+TAG_OBJECTS += (
+    "335fa7d93d88de7e677cdfc6cbf84861a3259725",  # pragma: allowlist secret
+    "e32907e54cb454149c301a61aa45a7d9abfd1cde",  # pragma: allowlist secret
+    "831ef592492ff4e37199b3724165b0c3c532dde1",  # pragma: allowlist secret
+)
+
 
 def verify_checkpoint(
     root: Path,
-    immediate: str = "phase5b-tooling-v0.1.1",
+    immediate: str = "phase5b-tooling-v0.1.4",
     lineage: tuple[tuple[str, str], ...] = LINEAGE,
 ) -> str:
     def git(*args: str) -> str:

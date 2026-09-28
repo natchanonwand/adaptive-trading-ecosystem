@@ -43,6 +43,8 @@ export type Detail = Partial<Readiness> & {
   readiness_enabled?: boolean;
   research_environment?: {
     status: string;
+    native_bootstrap?: string;
+    symbol?: string;
     binding?: {
       terminal_executable: string;
       company: string;

@@ -99,6 +99,23 @@ NEW = {
 
 NEW.update(FIX_FILES - CHANGED)
 
+# Phase 5B.1B uses the actual frozen calibration checkpoint, preserving every earlier file.
+CHECKPOINT = "3ad73e72821026da91254100f065f37a390b015e"  # pragma: allowlist secret
+FIX_FILES = {
+    "src/trading_ecosystem/tester/environment.py",
+    "src/trading_ecosystem/tester/bootstrap.py",
+    "src/trading_ecosystem/tester/adapter.py",
+    "src/trading_ecosystem/tester/checkpoint.py",
+    "scripts/verify_phase5_b_scope.py",
+    "tests/test_phase5b_environment.py",
+    "tests/test_phase5b.py",
+    "dashboard/src/workbench/ReadinessPanel.tsx",
+    "dashboard/src/workbench/api.ts",
+    "dashboard/tests/readiness.test.tsx",
+    "PHASE5_B1B_REPORT.md",
+}
+NEW.update(FIX_FILES - CHANGED)
+
 
 def git(*args: str) -> str:
     return subprocess.check_output(["git", *args], text=True).strip()

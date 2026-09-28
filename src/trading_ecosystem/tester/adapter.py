@@ -1,7 +1,6 @@
 """Offline portable tester staging; never modify the source terminal or authenticate."""
 
 import hashlib
-import json
 import re
 import shutil
 import time
@@ -37,13 +36,14 @@ def load_environment(path: Path, symbol: str = "XAUUSDm") -> Environment:
         from trading_ecosystem.tester.environment import (
             EnvironmentError,
             TerminalBinding,
+            binding_status,
             validate_binding,
         )
 
         try:
-            return validate_binding(
-                TerminalBinding.model_validate_json(binding_path.read_bytes()), symbol
-            )
+            validate_binding(TerminalBinding.model_validate_json(binding_path.read_bytes()), symbol)
+            if binding_status(binding_path, symbol)["status"] == "TIMEOUT":
+                raise Blocked(State.TIMEOUT)
         except EnvironmentError as error:
             try:
                 status = State(str(error))
@@ -52,10 +52,9 @@ def load_environment(path: Path, symbol: str = "XAUUSDm") -> Environment:
             raise Blocked(status) from None
         except (ValueError, OSError):
             raise Blocked(State.BLOCKED_TESTER_DATA_ROOT) from None
-    try:
-        return Environment.model_validate(json.loads(path.read_text(encoding="utf-8-sig")))
-    except (OSError, ValueError):
-        raise Blocked(State.INITIALIZATION_FAILED) from None
+    # No native bootstrap has yet established a usable isolated broker/tester profile.
+    # A legacy environment JSON or valid executable alone cannot authorize a candidate run.
+    raise Blocked(State.INITIALIZATION_FAILED)
 
 
 def configuration_text(config: Configuration, expert: str, report: str, server: str) -> str:
@@ -131,37 +130,13 @@ class Adapter:
             or hashlib.sha256(exe.read_bytes()).hexdigest() != env.terminal_sha256
         ):
             raise Blocked(State.INITIALIZATION_FAILED)
-        cache = env.cache_directory.resolve() / env.server
-        if cache.resolve() != cache:
-            raise Blocked(State.INITIALIZATION_FAILED)
-        history, ticks = cache / "history" / config.symbol, cache / "ticks" / config.symbol
-        # Validate exact cached symbol presence before launch; never substitute another symbol.
-        if not history.is_dir() or not any(history.glob("*.hcc")):
-            raise Blocked(State.BLOCKED_SYMBOL)
-        if not ticks.is_dir() or not any(ticks.glob("*.tkc")):
-            raise Blocked(State.BLOCKED_REAL_TICKS_UNAVAILABLE)
+        # Source cache is MT5-owned. Native evidence, never filenames, determines availability.
         runtime = root / "terminal"
         runtime.mkdir()  # unique run root; fail rather than overwrite or reuse
         deadline = time.monotonic() + min(config.timeout_seconds, 120)
         copied = 0
         sources = [exe, exe.parent / "metatester64.exe", *exe.parent.glob("*.dll")]
         destinations = [(p, runtime / p.name) for p in sources]
-        for folder in (history, ticks):
-            for path in folder.rglob("*"):
-                if path.is_file():
-                    if not path.resolve().is_relative_to(cache) or path.suffix.lower() not in {
-                        ".hcc",
-                        ".hcs",
-                        ".tkc",
-                    }:
-                        raise Blocked(State.INITIALIZATION_FAILED)
-                    destinations.append(
-                        (path, runtime / "Bases" / env.server / path.relative_to(cache))
-                    )
-        symbols = cache / "symbols.raw"
-        if not symbols.is_file():
-            raise Blocked(State.BLOCKED_SYMBOL)
-        destinations.append((symbols, runtime / "Bases" / env.server / "symbols.raw"))
         for source, target in destinations:
             if cancel.is_set():
                 raise Blocked(State.CANCELLED)

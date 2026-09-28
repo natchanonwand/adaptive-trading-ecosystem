@@ -1,6 +1,7 @@
 """Terminal calibration boundaries; synthetic executables only."""
 
 import hashlib
+import json
 from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
@@ -8,10 +9,12 @@ from uuid import uuid4
 import pytest
 
 from tests.phase5b_helpers import config
-from trading_ecosystem.tester.adapter import configuration_text, load_environment
-from trading_ecosystem.tester.bootstrap import probe
+from trading_ecosystem.tester.adapter import Blocked, configuration_text, load_environment
+from trading_ecosystem.tester.bootstrap import assess_probe, probe
 from trading_ecosystem.tester.environment import (
     TerminalBinding,
+    binding_status,
+    readonly_compatibility,
     select_terminal,
     validate_binding,
     validate_config,
@@ -26,7 +29,9 @@ def binding(root: Path) -> TerminalBinding:
     data = root / "profile"
     cache = data / "bases" / "Synthetic-Demo"
     cache.mkdir(parents=True)
-    (cache / "symbols.raw").write_bytes(b"symbols")
+    (data / "origin.txt").write_text(str(root), encoding="utf-16")
+    (cache / "symbols").mkdir()
+    (cache / "symbols" / "symbols-arbitrary.dat").write_bytes(b"opaque")
     for folder, filename in (("history", "2026.hcc"), ("ticks", "202601.tkc")):
         target = cache / folder / "XAUUSDm"
         target.mkdir(parents=True)
@@ -52,7 +57,8 @@ def test_valid_pinned_terminal_and_build(tmp_path: Path) -> None:
     assert env.terminal_build == "6230"
     assert env.cache_directory == value.terminal_data_root / "bases"
     (tmp_path / "terminal-binding.json").write_text(value.model_dump_json(), encoding="utf-8")
-    assert load_environment(tmp_path / "environment.json") == env
+    with pytest.raises(Blocked, match="INITIALIZATION_FAILED"):
+        load_environment(tmp_path / "environment.json")
     with pytest.raises(ValueError):
         TerminalBinding.model_validate(
             {**value.model_dump(), "password": "synthetic-value"}  # pragma: allowlist secret
@@ -63,9 +69,8 @@ def test_valid_pinned_terminal_and_build(tmp_path: Path) -> None:
     "missing,reason",
     [
         ("terminal64.exe", "BLOCKED_TERMINAL_NOT_FOUND"),
-        ("profile/bases/Synthetic-Demo/symbols.raw", "BLOCKED_TESTER_CACHE"),
-        ("profile/bases/Synthetic-Demo/history/XAUUSDm/2026.hcc", "BLOCKED_TESTER_CACHE"),
-        ("profile/bases/Synthetic-Demo/ticks/XAUUSDm/202601.tkc", "BLOCKED_TESTER_CACHE"),
+        ("metatester64.exe", "BLOCKED_TERMINAL_NOT_FOUND"),
+        ("profile/origin.txt", "BLOCKED_TESTER_DATA_ROOT"),
     ],
 )
 def test_missing_files(tmp_path: Path, missing: str, reason: str) -> None:
@@ -128,13 +133,14 @@ def test_probe_process_boundary(tmp_path: Path, failure: bool) -> None:
 
     def fake(exe: Path, args: list[str], cwd: Path, timeout: float, cancel: Event) -> Outcome:
         assert isinstance(args, list) and args[0] == "/portable" and timeout == 10
-        assert not (cwd / "MQL5").exists()
-        assert "[Tester]" not in (cwd / "bootstrap.ini").read_text()
+        assert not list(cwd.rglob("*.ex5"))
+        assert "[Tester]" in (cwd / "bootstrap.ini").read_text()
+        assert not (cwd / "Bases").exists()
         if failure:
             raise OSError("private native error must not escape")
         return Outcome(7)
 
-    result = probe(value, tmp_path / "probe space", fake)
+    result = probe(value, tmp_path / "probe space", config(), fake)
     assert result["status"] == (
         "PROCESS_START_FAILED" if failure else "PROCESS_EXITED_DURING_BOOTSTRAP"
     )
@@ -143,21 +149,118 @@ def test_probe_process_boundary(tmp_path: Path, failure: bool) -> None:
     assert "private native" not in str(result)
 
 
-def test_probe_cache_blocker_never_launches(tmp_path: Path) -> None:
+def test_invalid_binding_never_launches(tmp_path: Path) -> None:
     value = binding(tmp_path)
-    (value.terminal_data_root / "bases/Synthetic-Demo/symbols.raw").unlink()
-    result = probe(value, tmp_path / "probe")
-    assert result["status"] == "BLOCKED_TESTER_CACHE"
+    (value.terminal_data_root / "origin.txt").unlink()
+    result = probe(value, tmp_path / "probe", config())
+    assert result["status"] == "BLOCKED_TESTER_DATA_ROOT"
     assert result["process_created"] is False
     assert not (tmp_path / "probe").exists()
 
 
 def test_bound_symbol_is_not_silently_replaced(tmp_path: Path) -> None:
     value = binding(tmp_path)
-    cache = value.terminal_data_root / "bases" / value.server
-    for folder in ("history", "ticks"):
-        (cache / folder / "XAUUSDm").rename(cache / folder / "BTCUSDm")
-    (tmp_path / "terminal-binding.json").write_text(value.model_dump_json(), encoding="utf-8")
-    assert load_environment(tmp_path / "environment.json", "BTCUSDm").server == value.server
-    with pytest.raises(ValueError, match="CACHE"):
-        validate_binding(value, "XAUUSDm")
+    evidence = {
+        "scope": {"environment": "DEMO"},
+        "latest": {
+            "ACCOUNT:current": {
+                "company": "Synthetic demo",
+                "server": value.server,
+                "trade_mode": 0,
+            },
+            "INSTRUMENT:XAUUSDm": {
+                "broker_symbol": "XAUUSDm",
+                "metadata": {"name": "XAUUSDm"},
+                "status": "PARTIAL",
+            },
+        },
+    }
+    result = readonly_compatibility(value, evidence, "XAUUSDm")
+    assert result["real_ticks_status"] == "UNKNOWN"
+    assert result["current_symbol_status"] == "UNKNOWN"
+    with pytest.raises(ValueError, match="BLOCKED_SYMBOL"):
+        readonly_compatibility(value, evidence, "BTCUSDm")
+    with pytest.raises(ValueError, match="IDENTITY_MISMATCH"):
+        readonly_compatibility(
+            value.model_copy(update={"server": "Other-Demo"}), evidence, "XAUUSDm"
+        )
+
+
+def test_cache_layout_is_not_a_capability(tmp_path: Path) -> None:
+    value = binding(tmp_path)
+    for item in (value.terminal_data_root / "bases").rglob("*"):
+        if item.is_file():
+            item.unlink()
+    assert validate_binding(value).terminal_build == "6230"
+    (value.terminal_data_root / "origin.txt").write_text(str(tmp_path / "other"))
+    with pytest.raises(ValueError, match="DATA_ROOT"):
+        validate_binding(value)
+
+
+def test_bounded_probe_preserves_all_source_bytes(tmp_path: Path) -> None:
+    from threading import Event
+
+    value = binding(tmp_path)
+    before = {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()}
+
+    def fake(exe: Path, args: list[str], cwd: Path, timeout: float, cancel: Event) -> Outcome:
+        assert timeout == 10
+        assert not list(cwd.rglob("*.dat"))
+        assert "Optimization=0" in (cwd / "bootstrap.ini").read_text()
+        return Outcome(1, timed_out=True)
+
+    result = probe(value, tmp_path / "probes", config(), fake)
+    assert result["status"] == "TIMEOUT"
+    assert result["tester_initialized"] == "UNKNOWN"
+    assert result["baseline_result"] is False
+    runtime = Path(str(result["working_directory"]))
+    assert (
+        result["diagnostic_sha256"]
+        == hashlib.sha256((runtime / "diagnostic.txt").read_bytes()).hexdigest()
+    )
+    assert all(p.read_bytes() == data for p, data in before.items())
+
+
+def test_unwritable_runtime_never_launches(tmp_path: Path) -> None:
+    value = binding(tmp_path)
+    root = tmp_path / "occupied"
+    root.write_bytes(b"not a directory")
+    result = probe(value, root, config())
+    assert result["status"] == "BLOCKED_TESTER_RUNTIME_DIRECTORY"
+    assert result["process_created"] is False
+
+
+def test_native_startup_is_not_tester_readiness() -> None:
+    result = assess_probe(
+        {"config_path": "probe.ini", "terminal_build": "6230", "timed_out": True},
+        'successfully initialized from start config "probe.ini"\n'
+        "MetaTrader 5 x64 build 6230 started for MetaQuotes Ltd.",
+    )
+    assert result["configuration_accepted"] == "OBSERVED"
+    assert result["native_build_observed"] is True
+    assert result["status"] == "TIMEOUT"
+    assert assess_probe({}, "")["configuration_accepted"] == "UNKNOWN"
+
+
+def test_binding_or_forged_success_cannot_enable_real_run(tmp_path: Path) -> None:
+    value = binding(tmp_path)
+    path = tmp_path / "terminal-binding.json"
+    path.write_text(value.model_dump_json())
+    assert binding_status(path)["status"] == "BOOTSTRAP_UNVERIFIED"
+    record = {
+        "terminal_binding_id": str(value.terminal_binding_id),
+        "terminal_sha256": value.terminal_sha256,
+        "kind": "ENVIRONMENT_BOOTSTRAP_PROBE",
+        "baseline_result": False,
+        "status": "READY",
+    }
+    observed = tmp_path / "native-bootstrap.json"
+    observed.write_text(json.dumps(record))
+    assert binding_status(path)["status"] == "BOOTSTRAP_UNVERIFIED"
+    with pytest.raises(Blocked, match="INITIALIZATION_FAILED"):
+        load_environment(tmp_path / "environment.json")
+    record["status"] = "TIMEOUT"
+    observed.write_text(json.dumps(record))
+    assert binding_status(path)["status"] == "TIMEOUT"
+    with pytest.raises(Blocked, match="TIMEOUT"):
+        load_environment(tmp_path / "environment.json")

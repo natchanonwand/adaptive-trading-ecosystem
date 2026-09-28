@@ -182,6 +182,7 @@ def test_staging_preserves_sources_and_omits_private_profiles(tmp_path: Path) ->
     )
     assert (runtime / "MQL5/Experts" / (cfg.baseline_run_id.hex + ".ex5")).read_bytes() == EA
     assert not list(runtime.rglob("accounts.dat"))
+    assert not (runtime / "Bases").exists()
     assert all(Path(p).read_bytes() == v for p, v in before.items())
     with pytest.raises(FileExistsError):
         Adapter(env).prepare(
@@ -193,16 +194,13 @@ def test_staging_preserves_sources_and_omits_private_profiles(tmp_path: Path) ->
     "problem,state",
     [
         ("sha", State.BLOCKED_ARTIFACT_IDENTITY_MISMATCH),
-        ("symbol", State.BLOCKED_SYMBOL),
-        ("ticks", State.BLOCKED_REAL_TICKS_UNAVAILABLE),
+        ("broker", State.BLOCKED_SYMBOL),
         ("terminal", State.INITIALIZATION_FAILED),
     ],
 )
 def test_staging_fail_closed(tmp_path: Path, problem: str, state: State) -> None:
     env = environment(tmp_path)
-    cfg = config(symbol="BTCUSDm") if problem == "symbol" else config()
-    if problem == "ticks":
-        (env.cache_directory / env.server / "ticks/XAUUSDm/202609.tkc").unlink()
+    cfg = config()
     if problem == "terminal":
         env.terminal_executable.write_bytes(b"changed")
     with pytest.raises(Blocked) as exc:
@@ -211,7 +209,7 @@ def test_staging_fail_closed(tmp_path: Path, problem: str, state: State) -> None
             EA,
             "0" * 64 if problem == "sha" else hashlib.sha256(EA).hexdigest(),
             tmp_path,
-            "Synthetic demo",
+            "Wrong broker" if problem == "broker" else "Synthetic demo",
             threading.Event(),
         )
     assert exc.value.status == state
