@@ -1,4 +1,5 @@
 import { BaselinePanel } from './BaselinePanel';
+import { CandidateReadiness } from './CandidateReadiness';
 import { useState } from 'react';
 import { request, type Detail } from './api';
 
@@ -349,6 +350,11 @@ export function ReadinessPanel({
         .map((c) => (
           <pre key={c.configuration_identity}>{JSON.stringify(c, null, 2)}</pre>
         ))}
+      <CandidateReadiness
+        key={project.project_id + selected}
+        projectId={project.project_id}
+        configurationId={selected}
+      />
       <label>
         <input
           type="checkbox"

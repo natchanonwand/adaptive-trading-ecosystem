@@ -3,7 +3,7 @@
 import json
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
-from uuid import UUID
+from uuid import NAMESPACE_URL, UUID, uuid5
 
 from sqlalchemy import Engine
 from sqlalchemy.exc import SQLAlchemyError
@@ -61,6 +61,37 @@ class BaselineHandler(Handler):
                     )
                     detail["baseline_enabled"] = True
                     value = detail
+                elif path == "/workbench-api/baseline-candidate-readiness":
+                    from trading_ecosystem.tester.environment import TerminalBinding
+                    from trading_ecosystem.tester.installed_profile import public_summary
+                    from trading_ecosystem.tester.qualification import qualify
+
+                    query = parse_qs(parsed.query, strict_parsing=True)
+                    if set(query) != {"project_id", "configuration_id"} or any(
+                        len(v) != 1 for v in query.values()
+                    ):
+                        raise ValueError("INVALID_QUERY")
+                    project_id = UUID(query["project_id"][0])
+                    config_id = UUID(query["configuration_id"][0])
+                    project = store.project(conn, project_id)
+                    root = self.server.service.root
+                    pinned = TerminalBinding.model_validate_json(
+                        (root / "terminal-binding.json").read_bytes()
+                    )
+                    value = public_summary(
+                        qualify(
+                            conn,
+                            self.server.artifacts,
+                            project_id,
+                            project.candidate_id,
+                            config_id,
+                            pinned,
+                            (root.parent / "phase5_b1e/probe").resolve(),
+                            (root.parent / "phase5_b1g/workbench").resolve(),
+                            uuid5(NAMESPACE_URL, f"phase5b1g:{project_id}:{config_id}"),
+                            installed_profile=True,
+                        )
+                    )
                 elif path == "/workbench-api/baseline-configurations":
                     query = parse_qs(parsed.query, strict_parsing=True)
                     if set(query) != {"project_id"} or len(query["project_id"]) != 1:

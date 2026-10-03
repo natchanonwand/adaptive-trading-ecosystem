@@ -79,9 +79,18 @@ LINEAGE += (
 TAG_OBJECTS += ("ee92d9a1c9f415f9477f36c965e08bf7a6924a7b",)  # pragma: allowlist secret
 
 
+LINEAGE += (
+    (
+        "phase5b-tooling-v0.1.9",
+        "6b9567a9ad76f27e63f98aeeae98350bcc1700fd",  # pragma: allowlist secret
+    ),
+)
+TAG_OBJECTS += ("b3e259e9e6c71606e4ef53b80ac8832edf7b5d3c",)  # pragma: allowlist secret
+
+
 def verify_checkpoint(
     root: Path,
-    immediate: str = "phase5b-tooling-v0.1.8",
+    immediate: str = "phase5b-tooling-v0.1.9",
     lineage: tuple[tuple[str, str], ...] = LINEAGE,
 ) -> str:
     def git(*args: str) -> str:

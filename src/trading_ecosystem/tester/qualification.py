@@ -96,6 +96,8 @@ def qualify(
     proof_root: Path,
     output_root: Path,
     qualification_id: UUID | None = None,
+    *,
+    installed_profile: bool = False,
 ) -> dict[str, Any]:
     """Read persisted identities afresh; emit a bound proposal, never an execution capability."""
     result: dict[str, Any] = {
@@ -118,7 +120,8 @@ def qualify(
     }
     try:
         output_root = local_path(output_root)
-        if not output_root.is_relative_to(Path(".local/phase5_b1f").resolve()):
+        namespace = ".local/phase5_b1g" if installed_profile else ".local/phase5_b1f"
+        if not output_root.is_relative_to(Path(namespace).resolve()):
             raise ValueError("BLOCKED_CANDIDATE_INGESTION_MODEL")
         subprocess.run(
             ["git", "check-ignore", "--quiet", str(output_root)],
@@ -188,9 +191,20 @@ def qualify(
         result["research_environment"] = environment
         mode = ingestion(attestation.provenance)
         result["ingestion_mode"] = mode
+        if installed_profile:
+            from trading_ecosystem.tester.installed_profile import installed_path, strategy
+
+            result["schema"] = "PHASE5B1G_QUALIFICATION_V1"
+            result["execution_strategy"] = strategy(mode)
         if mode == "AUTHORIZED_MT5_INSTALLED_EA":
             expert = "Market\\" + artifact.filename
-            path = local_path(pinned.terminal_data_root / "MQL5/Experts/Market" / artifact.filename)
+            path = (
+                installed_path(pinned, artifact.filename)
+                if installed_profile
+                else local_path(
+                    pinned.terminal_data_root / "MQL5/Experts/Market" / artifact.filename
+                )
+            )
             if not path.is_relative_to(pinned.terminal_data_root / "MQL5/Experts/Market"):
                 raise ValueError("BLOCKED_CANDIDATE_INGESTION_MODEL")
             if not path.is_file():
@@ -246,11 +260,24 @@ def qualify(
             else "VERIFIED_ACCOUNT_BINDING_NOT_SUPPORTED_BY_PORTABLE_EXECUTION_ADAPTER"
         )
         result["status"] = "BLOCKED_CANDIDATE_INGESTION_MODEL"
+        if installed_profile and mode == "AUTHORIZED_MT5_INSTALLED_EA":
+            from trading_ecosystem.tester.installed_profile import InstalledProfileAdapter
+
+            plan = InstalledProfileAdapter().dry_run(binding, pinned, proof_root)
+            binding["installed_profile"] = plan
+            result.update(
+                installed_profile=plan,
+                execution_binding={"identity": digest(binding), "content": binding},
+                native_config_dry_run="VERIFIED_DRY_RUN_NO_LAUNCH",
+                status="CANDIDATE_EXECUTION_READY",
+                adapter_limitation=None,
+            )
     except (ValueError, OSError, subprocess.SubprocessError) as error:
         known = {
             "BLOCKED_AUTHORIZATION_PROVENANCE",
             "BLOCKED_ARTIFACT_IDENTITY_MISMATCH",
             "BLOCKED_CANDIDATE_INGESTION_MODEL",
+            "BLOCKED_CANDIDATE_PROFILE_MISMATCH",
             "BLOCKED_TERMINAL_IDENTITY_MISMATCH",
             "BLOCKED_TESTER_ACCOUNT_NOT_DEMO",
             "BASELINE_CONFIGURATION_REQUIRED",
