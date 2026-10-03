@@ -148,6 +148,18 @@ FIX_FILES = {
 NEW.update(FIX_FILES - CHANGED)
 
 
+CHECKPOINT = "3f88a030d7f6b67d47f7a3fea01b490a8ca0bde5"  # pragma: allowlist secret
+FIX_FILES = {
+    "src/trading_ecosystem/tester/research_account.py",
+    "src/trading_ecosystem/tester/account_probe.py",
+    "src/trading_ecosystem/tester/checkpoint.py",
+    "scripts/verify_phase5_b_scope.py",
+    "tests/test_phase5b_research_account.py",
+    "PHASE5_B1E_REPORT.md",
+}
+NEW.update(FIX_FILES - CHANGED)
+
+
 def git(*args: str) -> str:
     return subprocess.check_output(["git", *args], text=True).strip()
 
