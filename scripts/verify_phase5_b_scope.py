@@ -189,6 +189,46 @@ FIX_FILES = {
 NEW.update(FIX_FILES - CHANGED)
 
 
+CHECKPOINT = "46f2c3d09beabae8a9d44c5ec7d3e1dbe5e899ed"  # pragma: allowlist secret
+FIX_FILES = {
+    "src/trading_ecosystem/tester/contracts.py",
+    "src/trading_ecosystem/tester/service.py",
+    "src/trading_ecosystem/tester/execution_plan.py",
+    "src/trading_ecosystem/tester/installed_execution.py",
+    "src/trading_ecosystem/tester/checkpoint.py",
+    "tests/integration/test_installed_execution.py",
+    "scripts/verify_phase5_b_scope.py",
+    "dashboard/vite.config.ts",
+    "dashboard/tests/workbench.test.tsx",
+    "PHASE5_B1H_REPORT.md",
+}
+NEW.update(FIX_FILES - CHANGED)
+
+
+def verify_frontend_correction(name: str) -> None:
+    """Permit only the two reviewed additions, preserving all old assertions/settings."""
+    frozen = subprocess.check_output(["git", "show", CHECKPOINT + ":" + name]).decode()
+    current = Path(name).read_text(encoding="utf-8")
+    if name == "dashboard/vite.config.ts":
+        expected = frozen.replace(
+            "  test: {\n",
+            "  test: {\n"
+            "    // Keep jsdom workers within this local gate's resource budget. Parallel suites\n"
+            "    // starved user-event timers; retain file isolation and the 5-second timeout.\n"
+            "    maxWorkers: 1,\n",
+        )
+    else:
+        line = (
+            "  expect(JSON.parse(call![1]!.body as string).candidate.artifact_id)"
+            ".toBe('artifact-1');\n"
+        )
+        expected = frozen.replace(
+            line, line + "  await screen.findByRole('heading', { name: 'Overview' });\n"
+        )
+    if current != expected:
+        raise ValueError("UNREVIEWED_FRONTEND_GATE_CHANGE: " + name)
+
+
 def git(*args: str) -> str:
     return subprocess.check_output(["git", *args], text=True).strip()
 
@@ -223,6 +263,9 @@ def main() -> None:
             raise ValueError("UNEXPECTED_PHASE5B_FILE: " + name)
     snapshot = json.loads(Path(".local/phase5_b/baseline.json").read_text(encoding="utf-8-sig"))
     for name, expected in snapshot.items():
+        if name in {"dashboard/vite.config.ts", "dashboard/tests/workbench.test.tsx"}:
+            verify_frontend_correction(name)
+            continue
         if (
             name not in CHANGED
             and hashlib.sha256(Path(name).read_bytes()).hexdigest().upper() != expected.upper()

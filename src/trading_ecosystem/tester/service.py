@@ -20,6 +20,8 @@ from trading_ecosystem.tester.adapter import (
     real_ticks_verified,
 )
 from trading_ecosystem.tester.contracts import ACTIVE, Run, State
+from trading_ecosystem.tester.execution_plan import selected_strategy
+from trading_ecosystem.tester.installed_execution import InstalledExecutionAdapter
 from trading_ecosystem.tester.parser import decode_report, parse
 from trading_ecosystem.workbench import store as onboarding
 
@@ -156,41 +158,62 @@ class Service:
                     artifact = onboarding.get_artifact(conn, run.artifact_id)
                 except ValueError:
                     raise Blocked(State.BLOCKED_ARTIFACT_IDENTITY_MISMATCH) from None
+                execution_strategy = selected_strategy(conn, run)
             if artifact.sha256 != run.ea_sha256 or not onboarding.verify_artifact(
                 self.artifacts, artifact
             ):
                 raise Blocked(State.BLOCKED_ARTIFACT_IDENTITY_MISMATCH)
-            try:
-                ea = onboarding.artifact_path(self.artifacts, artifact).read_bytes()
-            except OSError:
-                raise Blocked(State.BLOCKED_ARTIFACT_IDENTITY_MISMATCH) from None
-            adapter = self.adapter or Adapter(
-                load_environment(self.root / "environment.json", run.config.symbol)
+            ea = b""
+            if execution_strategy == "INSTALLED_PROFILE_REFERENCE":
+                adapter: Adapter = InstalledExecutionAdapter(
+                    self.engine,
+                    self.artifacts,
+                    run,
+                    self.root / "terminal-binding.json",
+                    self.root.parent / "phase5_b1g/qualification.json",
+                    self.root.parent / "phase5_b1e/probe",
+                )
+            else:
+                try:
+                    ea = onboarding.artifact_path(self.artifacts, artifact).read_bytes()
+                except OSError:
+                    raise Blocked(State.BLOCKED_ARTIFACT_IDENTITY_MISMATCH) from None
+                adapter = self.adapter or Adapter(
+                    load_environment(self.root / "environment.json", run.config.symbol)
+                )
+            evidence.write_json(
+                root / "execution-strategy.json",
+                {
+                    "execution_strategy": execution_strategy,
+                    "candidate_id": str(run.candidate_id),
+                    "authorization_event_id": str(run.authorization_event_id),
+                },
             )
             runtime = adapter.prepare(
                 run.config, ea, run.ea_sha256, root, p.broker_binding.broker_name, self.cancel_event
             )
-            staged = runtime / "MQL5" / "Experts" / (run_id.hex + ".ex5")
-            if hashlib.sha256(staged.read_bytes()).hexdigest() != run.ea_sha256:
-                raise Blocked(State.BLOCKED_ARTIFACT_IDENTITY_MISMATCH)
-            evidence.write_json(
-                root / "staged.json",
-                dict(
-                    candidate_id=str(run.candidate_id),
-                    ea_sha256=run.ea_sha256,
-                    input_sha256=run.input_sha256,
-                    terminal_sha256=hashlib.sha256(
-                        (runtime / "terminal64.exe").read_bytes()
-                    ).hexdigest(),
-                    terminal_build=adapter.environment.terminal_build,
-                    terminal_build_source="OPERATOR_DECLARED",
-                    staged_runtime_files={
-                        str(p.relative_to(runtime)): evidence.file_identity(p)
-                        for p in sorted(runtime.rglob("*"))
-                        if p.is_file()
-                    },
-                ),
-            )
+            if execution_strategy == "PORTABLE_ARTIFACT":
+                staged = runtime / "MQL5" / "Experts" / (run_id.hex + ".ex5")
+                if hashlib.sha256(staged.read_bytes()).hexdigest() != run.ea_sha256:
+                    raise Blocked(State.BLOCKED_ARTIFACT_IDENTITY_MISMATCH)
+                evidence.write_json(
+                    root / "staged.json",
+                    dict(
+                        candidate_id=str(run.candidate_id),
+                        ea_sha256=run.ea_sha256,
+                        input_sha256=run.input_sha256,
+                        terminal_sha256=hashlib.sha256(
+                            (runtime / "terminal64.exe").read_bytes()
+                        ).hexdigest(),
+                        terminal_build=adapter.environment.terminal_build,
+                        terminal_build_source="OPERATOR_DECLARED",
+                        staged_runtime_files={
+                            str(p.relative_to(runtime)): evidence.file_identity(p)
+                            for p in sorted(runtime.rglob("*"))
+                            if p.is_file()
+                        },
+                    ),
+                )
             if self.cancel_event.is_set():
                 raise Blocked(State.CANCELLED)
             run = self.advance(
@@ -248,7 +271,12 @@ class Service:
             run = self.advance(run_id, State.PARSING, exit_code=exit_code)
             try:
                 result = parse(raw, run_id, run.config.project_id, run.candidate_id)
-                if result.metadata["Expert"].removesuffix(".ex5") != run_id.hex:
+                experts = (
+                    adapter.report_experts()
+                    if isinstance(adapter, InstalledExecutionAdapter)
+                    else {run_id.hex}
+                )
+                if result.metadata["Expert"].removesuffix(".ex5") not in experts:
                     raise ValueError("REPORT_EXPERT_MISMATCH")
                 if result.metadata["Currency"] not in {"UNAVAILABLE", run.config.currency}:
                     raise ValueError("REPORT_CURRENCY_MISMATCH")
@@ -323,6 +351,11 @@ class Service:
                     )
         except Exception as exc:
             status = exc.status if isinstance(exc, Blocked) else State.TESTER_FAILED
+            if isinstance(exc, ValueError) and str(exc).startswith("BLOCKED_"):
+                try:
+                    status = State(str(exc))
+                except ValueError:
+                    pass
             if self.cancel_event.is_set():
                 status = State.CANCELLED
             identity = None

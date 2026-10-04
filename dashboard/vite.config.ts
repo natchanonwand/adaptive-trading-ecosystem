@@ -36,6 +36,9 @@ export default defineConfig({
     proxy: { '/api': proxy, '/health': proxy },
   },
   test: {
+    // Keep jsdom workers within this local gate's resource budget. Parallel suites
+    // starved user-event timers; retain file isolation and the 5-second timeout.
+    maxWorkers: 1,
     environment: 'jsdom',
     setupFiles: ['./tests/setup.ts'],
     restoreMocks: true,

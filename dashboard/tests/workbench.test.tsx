@@ -154,6 +154,7 @@ it('keeps uploaded artifact identity when switching back to custom candidate', a
     ([url, options]) => url.endsWith('/projects') && options?.method === 'POST',
   );
   expect(JSON.parse(call![1]!.body as string).candidate.artifact_id).toBe('artifact-1');
+  await screen.findByRole('heading', { name: 'Overview' });
 });
 
 it('shows identities and baseline placeholder without an execution request', async () => {
