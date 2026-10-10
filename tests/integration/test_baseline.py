@@ -44,7 +44,7 @@ def migration(database: Engine) -> None:
             conn.execute(
                 text("SELECT version_num FROM workbench.baseline_alembic_version")
             ).scalar_one()
-            == "0002_readiness"
+            == "0003_reconciled_results"
         )
         assert (
             conn.execute(text("SELECT version_num FROM workbench.alembic_version")).scalar_one()

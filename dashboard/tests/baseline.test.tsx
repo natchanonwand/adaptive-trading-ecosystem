@@ -232,3 +232,44 @@ it('shows an explicit busy error and never retries start automatically', async (
   expect(await screen.findByRole('alert')).toBeInTheDocument();
   expect(fetcher.mock.calls.filter(([url]) => url.endsWith('/start'))).toHaveLength(1);
 });
+
+it('keeps blocked execution separate from published zero-trade reconciliation', async () => {
+  const run = {
+    ...saved,
+    status: 'BLOCKED_REAL_TICKS_UNAVAILABLE',
+    started_at: '2026-10-09T10:01:02Z',
+    completed_at: '2026-10-09T10:02:03Z',
+  };
+  const publication = {
+    id: 'derived-result',
+    identity: 'publication-hash',
+    reconciliation_identity: 'reconciliation-hash',
+    reconciliation_status: 'REAL_TICK_COVERAGE_VERIFIED_100',
+    execution_strategy: 'INSTALLED_PROFILE_REFERENCE',
+    native_source_identity: 'native-hash',
+    stored_utf8_report_identity: 'stored-hash',
+    metrics: { total_trades: 0, net_profit: '0.00', win_rate: null, profit_factor: null },
+  };
+  const fetcher = vi.fn(async (url: string) => ({
+    ok: true,
+    json: async () => (url.includes('?') ? { items: [run] } : { run, result: null, publication }),
+  }));
+  vi.stubGlobal('fetch', fetcher);
+  render(<BaselinePanel detail={detail} existingOnly />);
+  await screen.findByRole('option', { name: /run · BLOCKED_REAL_TICKS_UNAVAILABLE/ });
+  fireEvent.change(screen.getByLabelText('Saved baseline runs'), { target: { value: 'run' } });
+  expect(
+    await screen.findByRole('heading', { name: 'Published result — post-run reconciliation' }),
+  ).toBeVisible();
+  expect(
+    screen.getByText('Execution outcome (unchanged): BLOCKED_REAL_TICKS_UNAVAILABLE'),
+  ).toBeVisible();
+  expect(screen.getByText('Reconciliation: REAL_TICK_COVERAGE_VERIFIED_100')).toBeVisible();
+  expect(screen.getByText('INSTALLED_PROFILE_REFERENCE')).toBeVisible();
+  expect(screen.getByText(run.started_at)).toBeVisible();
+  expect(screen.getByText(run.completed_at)).toBeVisible();
+  expect(screen.getAllByText('—')).toHaveLength(2);
+  expect(screen.getByText('0', { selector: 'dd' })).toBeVisible();
+  expect(screen.queryByRole('heading', { name: 'Result Summary' })).not.toBeInTheDocument();
+  expect(fetcher.mock.calls.every(([url]) => !url.endsWith('/start'))).toBe(true);
+});

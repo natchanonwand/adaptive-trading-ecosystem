@@ -40,6 +40,17 @@ type Result = {
   report_identity: string;
   result_identity: string;
 };
+type Publication = {
+  id: string;
+  identity: string;
+  reconciliation_status: string;
+  reconciliation_identity: string;
+  execution_strategy: string;
+  native_source_identity: string;
+  stored_utf8_report_identity: string;
+  metrics: Result['metrics'];
+};
+type RunDetail = { run: BaselineRun; result: Result | null; publication?: Publication | null };
 const active = ['QUEUED', 'PREPARING', 'RUNNING', 'PARSING'];
 const messages: Record<string, string> = {
   BLOCKED_SYMBOL:
@@ -106,6 +117,7 @@ export function BaselinePanel({
   const [runs, setRuns] = useState<BaselineRun[]>([]);
   const [run, setRun] = useState<BaselineRun | null>(null);
   const [result, setResult] = useState<Result | null>(null);
+  const [publication, setPublication] = useState<Publication | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [now, setNow] = useState(Date.now());
@@ -129,11 +141,12 @@ export function BaselinePanel({
     let mounted = true;
     const timer = setInterval(() => {
       setNow(Date.now());
-      call<{ run: BaselineRun; result: Result | null }>('/' + run.config.baseline_run_id)
+      call<RunDetail>('/' + run.config.baseline_run_id)
         .then((v) => {
           if (mounted) {
             setRun(v.run);
             setResult(v.result);
+            setPublication(v.publication ?? null);
           }
         })
         .catch((e: Error) => {
@@ -199,9 +212,10 @@ export function BaselinePanel({
               const id = e.target.value;
               if (id)
                 void action(async () => {
-                  const v = await call<{ run: BaselineRun; result: Result | null }>('/' + id);
+                  const v = await call<RunDetail>('/' + id);
                   setRun(v.run);
                   setResult(v.result);
+                  setPublication(v.publication ?? null);
                   setConfirmed(false);
                 });
             }}
@@ -337,6 +351,9 @@ export function BaselinePanel({
               input_sha256: run.input_sha256 || 'Not applicable',
               candidate_id: run.candidate_id,
               artifact_id: run.artifact_id,
+              started_at: run.started_at ?? 'UNAVAILABLE',
+              ended_at: run.completed_at ?? 'UNAVAILABLE',
+              execution_strategy: publication?.execution_strategy ?? 'UNAVAILABLE',
               ea_sha256: run.ea_sha256,
             }).map(([key, value]) => (
               <div key={key}>
@@ -420,6 +437,37 @@ export function BaselinePanel({
               </p>
             </>
           )}
+          {publication && (
+            <section aria-label="Reconciled publication">
+              <h3>Published result — post-run reconciliation</h3>
+              <p>Execution outcome (unchanged): {run.status}</p>
+              <p>Reconciliation: {publication.reconciliation_status}</p>
+              <p>Publication: PUBLISHED · {publication.id}</p>
+              <dl className="wb-facts">
+                {Object.entries(publication.metrics).map(([key, value]) => (
+                  <div key={key}>
+                    <dt>{key.replaceAll('_', ' ')}</dt>
+                    <dd>{value === null ? '\u2014' : String(value)}</dd>
+                  </div>
+                ))}
+              </dl>
+              <p>Zero trades is a valid observation; undefined rates remain unavailable.</p>
+              <p>
+                Publication identity: <code>{publication.identity}</code>
+              </p>
+              <p>
+                Reconciliation identity: <code>{publication.reconciliation_identity}</code>
+              </p>
+              <p>
+                Native source identity (manifest provenance only):{' '}
+                <code>{publication.native_source_identity}</code>
+              </p>
+              <p>Original native encoding bytes were not retained.</p>
+              <p>
+                Verified stored UTF-8 report: <code>{publication.stored_utf8_report_identity}</code>
+              </p>
+            </section>
+          )}
           <h3>Execution Evidence</h3>
           <p>
             Run ID: <code>{run.config.baseline_run_id}</code>
@@ -434,6 +482,7 @@ export function BaselinePanel({
               onClick={() => {
                 setRun(null);
                 setResult(null);
+                setPublication(null);
                 setConfirmed(false);
                 setForm({ ...form, baseline_run_id: crypto.randomUUID() });
               }}

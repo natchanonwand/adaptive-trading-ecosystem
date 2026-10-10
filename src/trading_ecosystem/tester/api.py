@@ -8,7 +8,7 @@ from uuid import NAMESPACE_URL, UUID, uuid5
 from sqlalchemy import Engine
 from sqlalchemy.exc import SQLAlchemyError
 
-from trading_ecosystem.tester import readiness, store
+from trading_ecosystem.tester import publication, readiness, store
 from trading_ecosystem.tester.contracts import Configuration
 from trading_ecosystem.tester.service import Busy, Service
 from trading_ecosystem.workbench.api import Handler, WorkbenchServer
@@ -115,6 +115,7 @@ class BaselineHandler(Handler):
                     result = store.result(conn, run_id)
                     value = {
                         "run": run.model_dump(mode="json"),
+                        "publication": publication.read(conn, run_id),
                         "result": result.model_dump(mode="json") if result else None,
                     }
             self.send(200, value)
