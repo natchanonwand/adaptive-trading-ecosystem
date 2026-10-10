@@ -1,3 +1,4 @@
+import { ExperimentsPanel } from './ExperimentsPanel';
 import { ReadinessPanel } from './ReadinessPanel';
 import { useEffect, useState } from 'react';
 import { BaselinePanel } from './BaselinePanel';
@@ -699,7 +700,8 @@ function ProjectDetail({ id, back }: { id: string; back: () => void }) {
             )}
           </>
         )}
-        {['Experiments', 'Behavior', 'Forward'].includes(tab) && (
+        {tab === 'Experiments' && <ExperimentsPanel key={id} detail={data} />}
+        {['Behavior', 'Forward'].includes(tab) && (
           <>
             <h3>Coming soon</h3>
             <p>This stage is not enabled. No results or activity exist for this project.</p>

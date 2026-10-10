@@ -168,7 +168,10 @@ it('shows identities and baseline placeholder without an execution request', asy
   await userEvent.click(screen.getByRole('button', { name: 'Baseline' }));
   await userEvent.click(screen.getByRole('button', { name: 'Run Baseline' }));
   expect(screen.getByRole('status')).toHaveTextContent('available in Phase 5B');
-  for (const stage of ['Experiments', 'Behavior', 'Forward']) {
+  await userEvent.click(screen.getByRole('button', { name: 'Experiments' }));
+  expect(await screen.findByText(/Phase 5C.0: define/)).toBeVisible();
+  expect(screen.getByRole('button', { name: 'Register / save draft' })).toBeVisible();
+  for (const stage of ['Behavior', 'Forward']) {
     await userEvent.click(screen.getByRole('button', { name: stage }));
     expect(screen.getByRole('heading', { name: 'Coming soon' })).toBeVisible();
   }
