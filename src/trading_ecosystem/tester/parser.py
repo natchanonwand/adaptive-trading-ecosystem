@@ -99,7 +99,9 @@ def parse(raw: bytes, run_id: UUID, project_id: UUID, candidate_id: UUID) -> Res
     for row in parser.rows:
         for i, cell in enumerate(row[:-1]):
             key = cell.rstrip(":")
-            if key in known:
+            # Native Orders/Deals column headings are not setting/value rows.
+            # Colon-labelled duplicate settings still fail closed.
+            if cell.endswith(":") and key in known:
                 if key in values:
                     raise ValueError("DUPLICATE_REPORT_FIELD")
                 values[key] = row[i + 1]

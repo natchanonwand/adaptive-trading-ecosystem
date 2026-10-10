@@ -195,14 +195,6 @@ def observed_failure(log: str) -> State | None:
 
 
 def real_ticks_verified(log: str) -> bool:
-    # Model=4 alone is not proof: MT5 may fall back to generated ticks. Unknown fails closed.
-    percentages = re.findall(r"(?<![\d.])(\d+(?:\.\d+)?)% real ticks", log, re.I)
-    return (
-        bool(percentages)
-        and all(float(v) == 100 for v in percentages)
-        and not re.search(
-            r"real ticks (?:absent|unavailable)|generated ticks|tick generation|discarded",
-            log,
-            re.I,
-        )
-    )
+    from trading_ecosystem.tester.tick_evidence import Coverage, extract
+
+    return extract("EVERY_TICK_BASED_ON_REAL_TICKS", log).classification == Coverage.VERIFIED

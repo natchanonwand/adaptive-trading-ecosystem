@@ -207,7 +207,7 @@ NEW.update(FIX_FILES - CHANGED)
 
 def verify_frontend_correction(name: str) -> None:
     """Permit only the two reviewed additions, preserving all old assertions/settings."""
-    frozen = subprocess.check_output(["git", "show", CHECKPOINT + ":" + name]).decode()
+    frozen = subprocess.check_output(["git", "show", "phase5b-tooling-v0.1.10:" + name]).decode()
     current = Path(name).read_text(encoding="utf-8")
     if name == "dashboard/vite.config.ts":
         expected = frozen.replace(
@@ -227,6 +227,23 @@ def verify_frontend_correction(name: str) -> None:
         )
     if current != expected:
         raise ValueError("UNREVIEWED_FRONTEND_GATE_CHANGE: " + name)
+
+
+CHECKPOINT = "c78a7ed46f0c846d9aeffa345b8c08451ce028ac"  # pragma: allowlist secret
+FIX_FILES = {
+    "src/trading_ecosystem/tester/tick_evidence.py",
+    "src/trading_ecosystem/tester/parser.py",
+    "src/trading_ecosystem/tester/reconciliation.py",
+    "src/trading_ecosystem/tester/adapter.py",
+    "src/trading_ecosystem/tester/contracts.py",
+    "src/trading_ecosystem/tester/service.py",
+    "src/trading_ecosystem/tester/checkpoint.py",
+    "scripts/verify_phase5_b_scope.py",
+    "tests/test_phase5b_tick_evidence.py",
+    "tests/integration/test_tick_reconciliation.py",
+    "PHASE5_B1I_REPORT.md",
+}
+NEW.update(FIX_FILES - CHANGED)
 
 
 def git(*args: str) -> str:

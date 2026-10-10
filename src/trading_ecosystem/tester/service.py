@@ -17,7 +17,6 @@ from trading_ecosystem.tester.adapter import (
     Blocked,
     load_environment,
     observed_failure,
-    real_ticks_verified,
 )
 from trading_ecosystem.tester.contracts import ACTIVE, Run, State
 from trading_ecosystem.tester.execution_plan import selected_strategy
@@ -266,8 +265,21 @@ class Service:
                 )
                 raise Blocked(State.REPORT_PARSE_FAILED)
             (root / "report.htm").write_bytes(raw)
-            if not real_ticks_verified(log):
-                raise Blocked(State.BLOCKED_REAL_TICKS_UNAVAILABLE)
+            from trading_ecosystem.tester.tick_evidence import Coverage, extract
+
+            try:
+                tick_evidence = extract(run.config.tester_model, log, raw)
+            except ValueError:
+                raise Blocked(State.REPORT_PARSE_FAILED) from None
+            evidence.write_json(root / "tick-evidence.json", tick_evidence.model_dump(mode="json"))
+            if tick_evidence.classification != Coverage.VERIFIED:
+                raise Blocked(
+                    {
+                        Coverage.UNAVAILABLE: State.BLOCKED_REAL_TICKS_UNAVAILABLE,
+                        Coverage.PARTIAL: State.REAL_TICK_COVERAGE_PARTIAL,
+                        Coverage.UNVERIFIED: State.REAL_TICK_EVIDENCE_UNVERIFIED,
+                    }[tick_evidence.classification]
+                )
             run = self.advance(run_id, State.PARSING, exit_code=exit_code)
             try:
                 result = parse(raw, run_id, run.config.project_id, run.candidate_id)
