@@ -547,3 +547,58 @@
     transform: none;
   }
 }
+
+.wb-shell .rt-copy-value {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+.wb-shell .rt-window-body {
+  overflow-wrap: anywhere;
+}
+.wb-shell .rt-copy-value code {
+  overflow-wrap: anywhere;
+}
+.wb-shell .rt-assessments {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 16px;
+  margin-block: 16px;
+}
+.wb-shell .rt-assessments section {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.wb-shell .rt-table-scroll {
+  max-width: 100%;
+  max-height: 560px;
+  margin-block: 16px;
+}
+.wb-shell .rt-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--bg-panel);
+}
+.wb-shell .rt-table td {
+  min-width: 150px;
+  max-width: 340px;
+  overflow-wrap: anywhere;
+}
+.wb-shell .rt-table time {
+  white-space: nowrap;
+}
+.wb-shell .rt-window .rt-metric {
+  padding: 12px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.wb-shell .rt-window .rt-metric dd {
+  font-size: 20px;
+}
+.wb-shell .rt-table tr[aria-selected='true'] {
+  outline: 1px solid var(--accent-primary);
+  outline-offset: -1px;
+}

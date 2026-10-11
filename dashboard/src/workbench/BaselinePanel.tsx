@@ -1,7 +1,16 @@
 import { useEffect, useState } from 'react';
 import { type Detail } from './api';
+import { RetroPanel } from './retro';
+import {
+  EvidenceLineage,
+  Metrics,
+  PublicationPanel,
+  RunHeader,
+  RunTable,
+} from './ResearchSurfaces';
 
 type Config = {
+  configuration_id?: string | null;
   baseline_run_id: string;
   project_id: string;
   symbol: string;
@@ -18,6 +27,8 @@ type Config = {
   set_text: string | null;
 };
 export type BaselineRun = {
+  exit_code?: number | null;
+  authorization_event_id?: string | null;
   config: Config;
   candidate_id: string;
   artifact_id: string;
@@ -40,7 +51,11 @@ type Result = {
   report_identity: string;
   result_identity: string;
 };
-type Publication = {
+export type Publication = {
+  state?: string;
+  provenance?: string;
+  configuration_identity?: string;
+  execution_plan_identity?: string;
   id: string;
   identity: string;
   reconciliation_status: string;
@@ -94,9 +109,11 @@ async function call<T>(path: string, body?: unknown): Promise<T> {
 export function BaselinePanel({
   detail,
   existingOnly = false,
+  readOnly = false,
 }: {
   detail: Detail;
   existingOnly?: boolean;
+  readOnly?: boolean;
 }) {
   const [form, setForm] = useState<Config>(() => ({
     baseline_run_id: crypto.randomUUID(),
@@ -169,6 +186,15 @@ export function BaselinePanel({
       setBusy(false);
     }
   }
+  function selectRun(id: string) {
+    void action(async () => {
+      const v = await call<RunDetail>('/' + id);
+      setRun(v.run);
+      setResult(v.result);
+      setPublication(v.publication ?? null);
+      setConfirmed(false);
+    });
+  }
   const elapsed = run?.started_at
     ? Math.max(
         0,
@@ -210,14 +236,7 @@ export function BaselinePanel({
             disabled={busy || running}
             onChange={(e) => {
               const id = e.target.value;
-              if (id)
-                void action(async () => {
-                  const v = await call<RunDetail>('/' + id);
-                  setRun(v.run);
-                  setResult(v.result);
-                  setPublication(v.publication ?? null);
-                  setConfirmed(false);
-                });
+              if (id) selectRun(id);
             }}
           >
             <option value="">Select a run</option>
@@ -229,7 +248,16 @@ export function BaselinePanel({
           </select>
         </label>
       )}
-      {!run && !existingOnly && (
+      {runs.length > 0 && (
+        <RunTable
+          runs={runs}
+          selected={run}
+          publication={publication}
+          disabled={busy || running}
+          onSelect={selectRun}
+        />
+      )}
+      {!run && !existingOnly && !readOnly && (
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -341,32 +369,32 @@ export function BaselinePanel({
           <p role="status">
             {run.status} · Elapsed {elapsed}s
           </p>
-          <dl className="wb-facts">
-            {Object.entries({
-              ...run.config,
-              set_text:
-                run.config.set_text === null
-                  ? 'Not supplied'
-                  : 'Captured in immutable configuration',
-              input_sha256: run.input_sha256 || 'Not applicable',
-              candidate_id: run.candidate_id,
-              artifact_id: run.artifact_id,
-              started_at: run.started_at ?? 'UNAVAILABLE',
-              ended_at: run.completed_at ?? 'UNAVAILABLE',
-              execution_strategy: publication?.execution_strategy ?? 'UNAVAILABLE',
-              ea_sha256: run.ea_sha256,
-            }).map(([key, value]) => (
-              <div key={key}>
-                <dt>{key.replaceAll('_', ' ')}</dt>
-                <dd>{String(value)}</dd>
-              </div>
-            ))}
-          </dl>
+          <RunHeader run={run} publication={publication} elapsed={elapsed} />
+          <RetroPanel title="Configuration">
+            <dl className="wb-facts">
+              {Object.entries({
+                ...run.config,
+                set_text:
+                  run.config.set_text === null
+                    ? 'Not supplied'
+                    : 'Captured in immutable configuration',
+                input_sha256: run.input_sha256 || 'Not applicable',
+                candidate_id: run.candidate_id,
+                artifact_id: run.artifact_id,
+                ea_sha256: run.ea_sha256,
+              }).map(([key, value]) => (
+                <div key={key}>
+                  <dt>{key.replaceAll('_', ' ')}</dt>
+                  <dd>{value === null ? '—' : String(value)}</dd>
+                </div>
+              ))}
+            </dl>
+          </RetroPanel>
           <p>
             Declared license: {run.declared_license_status} · Declared tester access:{' '}
             {run.declared_tester_access} · Observed: {run.observed_tester_status}
           </p>
-          {run.status === 'READY' && (
+          {!readOnly && run.status === 'READY' && (
             <>
               <label className="wb-check">
                 <input
@@ -392,7 +420,7 @@ export function BaselinePanel({
               </button>
             </>
           )}
-          {(running || run.status === 'READY') && (
+          {!readOnly && (running || run.status === 'READY') && (
             <button
               disabled={busy}
               onClick={() =>
@@ -408,18 +436,16 @@ export function BaselinePanel({
               Cancel baseline
             </button>
           )}
-          {messages[run.status] && <p role="alert">{messages[run.status]}</p>}
+          {messages[run.status] && (
+            <p role={publication ? 'note' : 'alert'}>
+              {publication && 'Recorded execution-time diagnostic: '}
+              {messages[run.status]}
+            </p>
+          )}
           {run.status === 'COMPLETE' && result && (
             <>
               <h3>Result Summary</h3>
-              <dl className="wb-facts">
-                {Object.entries(result.metrics).map(([key, value]) => (
-                  <div key={key}>
-                    <dt>{key.replaceAll('_', ' ')}</dt>
-                    <dd>{value === null ? 'UNAVAILABLE' : String(value)}</dd>
-                  </div>
-                ))}
-              </dl>
+              <Metrics metrics={result.metrics} currency={run.config.currency} />
               <h3>Tester Metadata</h3>
               <dl className="wb-facts">
                 {Object.entries(result.metadata).map(([key, value]) => (
@@ -437,37 +463,8 @@ export function BaselinePanel({
               </p>
             </>
           )}
-          {publication && (
-            <section aria-label="Reconciled publication">
-              <h3>Published result — post-run reconciliation</h3>
-              <p>Execution outcome (unchanged): {run.status}</p>
-              <p>Reconciliation: {publication.reconciliation_status}</p>
-              <p>Publication: PUBLISHED · {publication.id}</p>
-              <dl className="wb-facts">
-                {Object.entries(publication.metrics).map(([key, value]) => (
-                  <div key={key}>
-                    <dt>{key.replaceAll('_', ' ')}</dt>
-                    <dd>{value === null ? '\u2014' : String(value)}</dd>
-                  </div>
-                ))}
-              </dl>
-              <p>Zero trades is a valid observation; undefined rates remain unavailable.</p>
-              <p>
-                Publication identity: <code>{publication.identity}</code>
-              </p>
-              <p>
-                Reconciliation identity: <code>{publication.reconciliation_identity}</code>
-              </p>
-              <p>
-                Native source identity (manifest provenance only):{' '}
-                <code>{publication.native_source_identity}</code>
-              </p>
-              <p>Original native encoding bytes were not retained.</p>
-              <p>
-                Verified stored UTF-8 report: <code>{publication.stored_utf8_report_identity}</code>
-              </p>
-            </section>
-          )}
+          {publication && <PublicationPanel run={run} publication={publication} />}
+          {!publication && <EvidenceLineage run={run} publication={null} />}
           <h3>Execution Evidence</h3>
           <p>
             Run ID: <code>{run.config.baseline_run_id}</code>
@@ -476,7 +473,7 @@ export function BaselinePanel({
             Manifest identity: <code>{run.evidence_identity || 'UNAVAILABLE'}</code>
           </p>
           <p>Terminal build (operator configured): {run.terminal_build}</p>
-          {!running && run.status !== 'READY' && (
+          {!readOnly && !running && run.status !== 'READY' && (
             <button
               disabled={busy}
               onClick={() => {

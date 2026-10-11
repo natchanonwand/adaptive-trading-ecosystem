@@ -722,7 +722,11 @@ function ProjectDetail({ id, back }: { id: string; back: () => void }) {
               <p>
                 Candidate ID: <code>{p.candidate_id}</code>
               </p>
-              {data.readiness_enabled && <ReadinessPanel detail={data} source onChange={setData} />}
+              {data.readiness_enabled && (
+                <RetroPanel title="Authorization and research evidence">
+                  <ReadinessPanel detail={data} source onChange={setData} />
+                </RetroPanel>
+              )}
               <Evidence artifact={ea} title="EA artifact" />
               <Evidence artifact={manual} title="Manual" />
               <p>
@@ -734,6 +738,11 @@ function ProjectDetail({ id, back }: { id: string; back: () => void }) {
                 {p.broker_binding.timeframe}
               </p>
               <p>Status: {label(p.status)}</p>
+              {data.baseline_enabled && !data.readiness_enabled && (
+                <RetroPanel title="Run evidence">
+                  <BaselinePanel detail={data} existingOnly readOnly />
+                </RetroPanel>
+              )}
             </>
           )}
           {tab === 'Baseline' && data.readiness_enabled && (

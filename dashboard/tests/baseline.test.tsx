@@ -1,4 +1,5 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { BaselinePanel, type BaselineRun } from '../src/workbench/BaselinePanel';
 import { type Detail } from '../src/workbench/api';
@@ -237,6 +238,7 @@ it('keeps blocked execution separate from published zero-trade reconciliation', 
   const run = {
     ...saved,
     status: 'BLOCKED_REAL_TICKS_UNAVAILABLE',
+    exit_code: 0,
     started_at: '2026-10-09T10:01:02Z',
     completed_at: '2026-10-09T10:02:03Z',
   };
@@ -265,11 +267,62 @@ it('keeps blocked execution separate from published zero-trade reconciliation', 
     screen.getByText('Execution outcome (unchanged): BLOCKED_REAL_TICKS_UNAVAILABLE'),
   ).toBeVisible();
   expect(screen.getByText('Reconciliation: REAL_TICK_COVERAGE_VERIFIED_100')).toBeVisible();
-  expect(screen.getByText('INSTALLED_PROFILE_REFERENCE')).toBeVisible();
-  expect(screen.getByText(run.started_at)).toBeVisible();
-  expect(screen.getByText(run.completed_at)).toBeVisible();
-  expect(screen.getAllByText('—')).toHaveLength(2);
-  expect(screen.getByText('0', { selector: 'dd' })).toBeVisible();
+  expect(
+    within(screen.getByRole('region', { name: 'Run identity' })).getByText(
+      'INSTALLED_PROFILE_REFERENCE',
+    ),
+  ).toBeVisible();
+  const execution = within(screen.getByRole('region', { name: 'Execution' }));
+  expect(execution.getByText(run.started_at)).toBeVisible();
+  expect(execution.getByText(run.completed_at)).toBeVisible();
+  expect(execution.getByText('native exit code').parentElement).toHaveTextContent('0');
+  const published = within(screen.getByRole('region', { name: 'Reconciled publication' }));
+  expect(published.getByRole('rowheader', { name: 'Reconciliation' })).toBeVisible();
+  expect(published.getByRole('rowheader', { name: 'Publication' })).toBeVisible();
+  expect(published.getByText('POST_RUN_RECONCILIATION', { selector: 'p' })).toBeVisible();
+  expect(published.getByText('Original native encoding bytes were not retained.')).toBeVisible();
+  expect(published.getByRole('button', { name: 'Copy Publication identity' })).toBeEnabled();
+  expect(screen.getByText('win rate').parentElement).toHaveTextContent('—');
+  expect(screen.getByText('win rate').parentElement).not.toHaveTextContent('0%');
+  expect(screen.getByRole('rowheader', { name: 'profit factor' }).closest('tr')).toHaveTextContent(
+    '—',
+  );
+  expect(published.getByText('0', { selector: 'dd' })).toBeVisible();
   expect(screen.queryByRole('heading', { name: 'Result Summary' })).not.toBeInTheDocument();
   expect(fetcher.mock.calls.every(([url]) => !url.endsWith('/start'))).toBe(true);
+});
+
+it('opens a saved run from the semantic register using the keyboard without writes', async () => {
+  const fetcher = mock('COMPLETE', true);
+  const user = userEvent.setup();
+  render(<BaselinePanel detail={detail} existingOnly readOnly />);
+  const table = await screen.findByRole('table', { name: 'Baseline run register' });
+  expect(within(table).getByRole('columnheader', { name: 'Execution outcome' })).toBeVisible();
+  const inspect = within(table).getByRole('button', { name: 'Inspect run run' });
+  inspect.focus();
+  await user.keyboard('{Enter}');
+  expect(await screen.findByRole('region', { name: 'Run identity' })).toBeVisible();
+  expect(screen.queryByRole('button', { name: 'Run Baseline' })).not.toBeInTheDocument();
+  expect(fetcher.mock.calls.every(([, options]) => options?.method === 'GET')).toBe(true);
+});
+
+it('keeps evidence browsing read-only even when a saved run is READY', async () => {
+  const fetcher = mock('READY', true);
+  render(<BaselinePanel detail={detail} existingOnly readOnly />);
+  await selectRun();
+  expect(await screen.findByRole('region', { name: 'Run identity' })).toBeVisible();
+  expect(
+    screen.queryByRole('button', { name: 'Confirm and start tester' }),
+  ).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Cancel baseline' })).not.toBeInTheDocument();
+  for (const category of [
+    'Authorization',
+    'Artifact',
+    'Configuration',
+    'Execution plan',
+    'Native evidence',
+  ]) {
+    expect(screen.getAllByRole('rowheader', { name: category }).length).toBeGreaterThan(0);
+  }
+  expect(fetcher.mock.calls.every(([, options]) => options?.method === 'GET')).toBe(true);
 });
