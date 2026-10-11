@@ -1,3 +1,4 @@
+import { StatusBadge, RetroPanel, MetricStrip, MetricCard, IdentityField, Callout } from './retro';
 import { ExperimentsPanel } from './ExperimentsPanel';
 import { ReadinessPanel } from './ReadinessPanel';
 import { useEffect, useState } from 'react';
@@ -68,10 +69,16 @@ export function Workbench() {
   return (
     <div className="wb-shell">
       <header className="wb-header">
-        <a href="#/projects" onClick={() => go('/projects')}>
-          <b>ATE / Research Workbench</b>
+        <a className="wb-brand" href="#/projects" onClick={() => go('/projects')}>
+          <span className="wb-mark" aria-hidden="true">
+            ▣
+          </span>
+          <span>
+            <b>ADAPTIVE TRADING ECOSYSTEM</b>
+            <small>RESEARCH TERMINAL // WORKBENCH</small>
+          </span>
         </a>
-        <span className="wb-badge">DEMO research · No execution</span>
+        <StatusBadge status="DEMO research · No execution" />
       </header>
       <main className="wb-main">
         {route === '#/projects/new' ? (
@@ -140,7 +147,7 @@ function Projects({ open, create }: { open: (id: string) => void; create: () => 
         <div className="wb-grid">
           {items.map((p) => (
             <article className="wb-panel" key={p.project_id}>
-              <span className="wb-badge">{label(p.status)}</span>
+              <StatusBadge className="wb-badge" status={p.status} />
               <h2>{p.project_name}</h2>
               <p>{p.product_name}</p>
               <p className="muted">
@@ -611,7 +618,7 @@ function ProjectDetail({ id, back }: { id: string; back: () => void }) {
             {c.product_name} · {c.version}
           </p>
         </div>
-        <span className="wb-badge">{label(p.status)}</span>
+        <StatusBadge className="wb-badge" status={p.status} />
       </div>
       {data.acceptance_readiness && (
         <p role="status">
@@ -619,95 +626,143 @@ function ProjectDetail({ id, back }: { id: string; back: () => void }) {
           {data.acceptance_readiness.reasons.join(', ')}
         </p>
       )}
-      <nav className="wb-tabs" aria-label="Project sections">
-        {['Overview', 'Baseline', 'Experiments', 'Behavior', 'Forward', 'Evidence'].map((name) => (
-          <button
-            key={name}
-            aria-current={tab === name ? 'page' : undefined}
-            onClick={() => setTab(name)}
-          >
-            {name}
-          </button>
-        ))}
-      </nav>
-      <section className="wb-panel">
-        <h2>{tab}</h2>
-        {tab === 'Overview' && (
-          <>
-            <dl className="wb-facts">
-              {Object.entries({
-                Status: label(p.status),
-                Candidate: c.product_name,
-                Version: c.version,
-                Asset: p.broker_binding.canonical_asset,
-                Broker: p.broker_binding.broker_name,
-                Symbol: p.broker_binding.broker_symbol,
-                Timeframe: p.broker_binding.timeframe,
-                Environment: p.broker_binding.environment,
-                License: label(c.license_status),
-                'Tester access': label(c.tester_access_status),
-                'Artifact verification': data.verification.ea,
-              }).map(([key, v]) => (
-                <div key={key}>
-                  <dt>{key}</dt>
-                  <dd>{v}</dd>
-                </div>
-              ))}
-            </dl>
-            <p className="muted">
-              Readiness reflects registered metadata and artifact integrity. It is not a completed
-              baseline or a license verification by the vendor.
-            </p>
-          </>
-        )}
-        {tab === 'Evidence' && (
-          <>
-            <p>
-              Project ID: <code>{p.project_id}</code>
-            </p>
-            <p>
-              Candidate ID: <code>{p.candidate_id}</code>
-            </p>
-            {data.readiness_enabled && <ReadinessPanel detail={data} source onChange={setData} />}
-            <Evidence artifact={ea} title="EA artifact" />
-            <Evidence artifact={manual} title="Manual" />
-            <p>
-              Verification: EA {data.verification.ea}; manual {data.verification.manual}
-            </p>
-            <p>
-              {p.broker_binding.broker_name} · {p.broker_binding.environment} ·{' '}
-              {p.broker_binding.canonical_asset} → {p.broker_binding.broker_symbol} ·{' '}
-              {p.broker_binding.timeframe}
-            </p>
-            <p>Status: {label(p.status)}</p>
-          </>
-        )}
-        {tab === 'Baseline' && data.readiness_enabled && (
-          <ReadinessPanel detail={data} onChange={setData} />
-        )}
-        {tab === 'Baseline' && data.baseline_enabled && !data.readiness_enabled && (
-          <BaselinePanel detail={data} />
-        )}
-        {tab === 'Baseline' && !data.baseline_enabled && (
-          <>
-            <span className="wb-badge">{data.baseline_status}</span>
-            <p>No baseline results have been generated.</p>
-            <button onClick={() => setNotice(true)}>Run Baseline</button>
-            {notice && (
-              <p role="status">
-                Automated baseline execution will be available in Phase 5B. Nothing was executed.
+      <div className="wb-project-layout">
+        <nav className="wb-tabs" aria-label="Project sections">
+          <button onClick={back}>Projects</button>
+          {['Overview', 'Baseline', 'Experiments', 'Behavior', 'Forward', 'Evidence'].map(
+            (name) => (
+              <button
+                key={name}
+                aria-current={tab === name ? 'page' : undefined}
+                onClick={() => setTab(name)}
+              >
+                {name}
+              </button>
+            ),
+          )}
+        </nav>
+        <section className="wb-panel">
+          <h2>{tab}</h2>
+          {tab === 'Overview' && (
+            <>
+              <MetricStrip>
+                <MetricCard
+                  label="EA artifact bytes"
+                  value={c.artifact_size ?? null}
+                  note="Registered evidence size"
+                />
+                <MetricCard
+                  label="Manual bytes"
+                  value={c.manual_size ?? null}
+                  note="— means not provided"
+                />
+                <MetricCard
+                  label="Baseline configurations"
+                  value={data.configurations?.length ?? null}
+                  note="Registered definitions; not results"
+                />
+              </MetricStrip>
+              <RetroPanel
+                title="Project dossier"
+                status={p.broker_binding.environment}
+                footer="Registered metadata · research context only"
+              >
+                <dl className="wb-facts">
+                  {Object.entries({
+                    Status: label(p.status),
+                    Candidate: c.product_name,
+                    Version: c.version,
+                    Asset: p.broker_binding.canonical_asset,
+                    Broker: p.broker_binding.broker_name,
+                    Symbol: p.broker_binding.broker_symbol,
+                    Timeframe: p.broker_binding.timeframe,
+                    Environment: p.broker_binding.environment,
+                    License: label(c.license_status),
+                    'Tester access': label(c.tester_access_status),
+                    'Artifact verification': data.verification.ea,
+                  }).map(([key, v]) => (
+                    <div key={key}>
+                      <dt>{key}</dt>
+                      <dd>
+                        {[
+                          'Status',
+                          'Environment',
+                          'License',
+                          'Tester access',
+                          'Artifact verification',
+                        ].includes(key) ? (
+                          <StatusBadge status={v ?? 'UNKNOWN'} />
+                        ) : (
+                          v
+                        )}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </RetroPanel>
+              <RetroPanel title="Identity register">
+                <dl>
+                  <IdentityField label="Project ID" value={p.project_id} />
+                  <IdentityField label="Candidate ID" value={p.candidate_id} />
+                  <IdentityField label="EA artifact SHA-256" value={c.artifact_sha256 ?? null} />
+                </dl>
+              </RetroPanel>
+              <Callout title="Evidence before conclusions">
+                Readiness reflects registered metadata and artifact integrity. It is not a completed
+                baseline or a license verification by the vendor. Measured zero and unavailable
+                values remain distinct. Review Baseline for execution and publication evidence.
+              </Callout>
+            </>
+          )}
+          {tab === 'Evidence' && (
+            <>
+              <p>
+                Project ID: <code>{p.project_id}</code>
               </p>
-            )}
-          </>
-        )}
-        {tab === 'Experiments' && <ExperimentsPanel key={id} detail={data} />}
-        {['Behavior', 'Forward'].includes(tab) && (
-          <>
-            <h3>Coming soon</h3>
-            <p>This stage is not enabled. No results or activity exist for this project.</p>
-          </>
-        )}
-      </section>
+              <p>
+                Candidate ID: <code>{p.candidate_id}</code>
+              </p>
+              {data.readiness_enabled && <ReadinessPanel detail={data} source onChange={setData} />}
+              <Evidence artifact={ea} title="EA artifact" />
+              <Evidence artifact={manual} title="Manual" />
+              <p>
+                Verification: EA {data.verification.ea}; manual {data.verification.manual}
+              </p>
+              <p>
+                {p.broker_binding.broker_name} · {p.broker_binding.environment} ·{' '}
+                {p.broker_binding.canonical_asset} → {p.broker_binding.broker_symbol} ·{' '}
+                {p.broker_binding.timeframe}
+              </p>
+              <p>Status: {label(p.status)}</p>
+            </>
+          )}
+          {tab === 'Baseline' && data.readiness_enabled && (
+            <ReadinessPanel detail={data} onChange={setData} />
+          )}
+          {tab === 'Baseline' && data.baseline_enabled && !data.readiness_enabled && (
+            <BaselinePanel detail={data} />
+          )}
+          {tab === 'Baseline' && !data.baseline_enabled && (
+            <>
+              <span className="wb-badge">{data.baseline_status}</span>
+              <p>No baseline results have been generated.</p>
+              <button onClick={() => setNotice(true)}>Run Baseline</button>
+              {notice && (
+                <p role="status">
+                  Automated baseline execution will be available in Phase 5B. Nothing was executed.
+                </p>
+              )}
+            </>
+          )}
+          {tab === 'Experiments' && <ExperimentsPanel key={id} detail={data} />}
+          {['Behavior', 'Forward'].includes(tab) && (
+            <>
+              <h3>Coming soon</h3>
+              <p>This stage is not enabled. No results or activity exist for this project.</p>
+            </>
+          )}
+        </section>
+      </div>
     </>
   );
 }
