@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { CampaignPanel } from './CampaignPanel';
 import type { Detail } from './api';
 
 type Value = string | number | boolean | null | Value[] | { [key: string]: Value };
@@ -333,7 +334,8 @@ export function ExperimentsPanel({ detail }: { detail: Detail }) {
   return (
     <div>
       <p>
-        Phase 5C.0: define, review and freeze only. No experiment execution or tuning is available.
+        Phase 5C.0: define, review and freeze the experiment contract. Frozen definitions expose a
+        separate Phase 5C.1 controlled campaign panel; execution requires explicit authorization.
       </p>
       <p>
         <strong>LOCKED_OOS</strong> is reserved and protected from parameter selection. No OOS
@@ -484,6 +486,7 @@ export function ExperimentsPanel({ detail }: { detail: Detail }) {
         </>
       )}
       {frozen && <p>This definition is read-only. Future changes require a new definition.</p>}
+      {frozen && record && <CampaignPanel key={record.id} definition={record} />}
     </div>
   );
 }

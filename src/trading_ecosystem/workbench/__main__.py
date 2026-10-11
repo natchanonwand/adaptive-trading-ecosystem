@@ -4,7 +4,7 @@ import argparse
 from pathlib import Path
 
 from trading_ecosystem.config.settings import load_settings
-from trading_ecosystem.experiments.api import ExperimentServer
+from trading_ecosystem.experiments.campaign_api import CampaignServer, install
 from trading_ecosystem.persistence.database import create_database_engine
 
 
@@ -17,9 +17,10 @@ def main() -> None:
         raise ValueError("LOCAL_DATABASE_AND_VALID_PORT_REQUIRED")
     engine = create_database_engine(settings.database_url)
     try:
-        with ExperimentServer(
+        with CampaignServer(
             engine, Path(".local/artifacts/research_projects"), Path("dashboard/dist"), args.port
         ) as server:
+            install(server)
             print(
                 f"Research Workbench: http://127.0.0.1:{server.server_port}/workbench", flush=True
             )
