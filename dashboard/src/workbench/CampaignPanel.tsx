@@ -1,15 +1,8 @@
 import { useState } from 'react';
-import {
-  Button,
-  Checkbox,
-  DataTable,
-  MetricCard,
-  MetricStrip,
-  RetroPanel,
-  StatusBadge,
-} from './retro';
+import { Button, DataTable, MetricCard, MetricStrip, RetroPanel, StatusBadge } from './retro';
 import { CopyValue } from './ResearchSurfaces';
 import type { ExperimentRecord } from './ExperimentsPanel';
+import { BudgetMeter } from './ExperimentLab';
 
 type Campaign = {
   id: string;
@@ -18,7 +11,13 @@ type Campaign = {
   cancel_requested: boolean;
   plan_identity: string;
   plan: { candidates: { identity: string; assignments: Record<string, string> }[] };
-  definition: { budget: { maximum_native_executions: number; maximum_wall_seconds: number } };
+  definition: {
+    budget: {
+      maximum_configurations?: number;
+      maximum_native_executions: number;
+      maximum_wall_seconds: number;
+    };
+  };
   runs: {
     id: string;
     configuration_identity: string;
@@ -48,7 +47,6 @@ async function api<T>(path: string, body?: unknown): Promise<T> {
 }
 export function CampaignPanel({ definition }: { definition: ExperimentRecord }) {
   const [campaign, setCampaign] = useState<Campaign | null>(null);
-  const [confirmed, setConfirmed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [loaded, setLoaded] = useState(false);
@@ -70,7 +68,6 @@ export function CampaignPanel({ definition }: { definition: ExperimentRecord }) 
     setError('');
     try {
       setCampaign(await api<Campaign>(path, body));
-      setConfirmed(false);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -86,24 +83,33 @@ export function CampaignPanel({ definition }: { definition: ExperimentRecord }) 
         Creating a plan does not execute it. DEVELOPMENT selection is frozen before VALIDATION.
         LOCKED_OOS is unavailable.
       </p>
-      <p>No real campaign is authorized by Phase 5C.1 implementation review.</p>
+      <p>Runner qualified. No controlled campaign has been authorized for UI-2.</p>
+      <p>
+        Execution authorization is not supplied by the current API. Start / resume remains
+        unavailable; inspecting evidence does not authorize execution.
+      </p>
       {!loaded ? (
         <Button disabled={busy} onClick={() => void inspect()}>
           Inspect campaigns
         </Button>
       ) : !campaign ? (
-        <Button
-          disabled={busy}
-          onClick={() =>
-            void action('', {
-              definition_id: definition.id,
-              definition_identity: definition.identity,
-              confirmed: true,
-            })
-          }
-        >
-          Create campaign plan
-        </Button>
+        <div className="lab-empty">
+          <p>
+            No campaign exists for this frozen definition. No results or progress are available.
+          </p>
+          <Button
+            disabled={busy}
+            onClick={() =>
+              void action('', {
+                definition_id: definition.id,
+                definition_identity: definition.identity,
+                confirmed: true,
+              })
+            }
+          >
+            Create campaign plan
+          </Button>
+        </div>
       ) : (
         <>
           <CopyValue label="campaign identity" value={campaign.id} />
@@ -131,6 +137,22 @@ export function CampaignPanel({ definition }: { definition: ExperimentRecord }) 
             />
           </MetricStrip>
           <p>
+            Candidate usage counts retained unique configurations. Duplicate sampling slots are not
+            replenished; the frozen plan cannot grow.
+          </p>
+          <div className="lab-budget-grid">
+            <BudgetMeter
+              label="Candidate budget"
+              used={campaign.plan.candidates.length}
+              maximum={campaign.definition.budget.maximum_configurations ?? null}
+            />
+            <BudgetMeter
+              label="Execution budget"
+              used={campaign.consumed_executions}
+              maximum={campaign.definition.budget.maximum_native_executions}
+            />
+          </div>
+          <p>
             Wall-time limit: {campaign.definition.budget.maximum_wall_seconds}s. Cancellation
             requested: {String(campaign.cancel_requested)}
           </p>
@@ -139,15 +161,7 @@ export function CampaignPanel({ definition }: { definition: ExperimentRecord }) 
           </Button>
           {['CREATED', 'RUNNING'].includes(campaign.status) && (
             <>
-              <Checkbox
-                label="I explicitly authorize this frozen campaign's bounded execution or resume."
-                checked={confirmed}
-                onChange={(e) => setConfirmed(e.target.checked)}
-              />
-              <Button
-                disabled={busy || !confirmed || campaign.cancel_requested}
-                onClick={() => void action('/' + campaign.id + '/start', { confirmed: true })}
-              >
+              <Button disabled title="No real campaign execution is authorized in UI-2">
                 Start / resume campaign
               </Button>
               <Button
@@ -160,7 +174,13 @@ export function CampaignPanel({ definition }: { definition: ExperimentRecord }) 
           )}
           <DataTable
             caption="Frozen candidate configurations"
-            columns={['Identity', 'Assignments', 'Development selection']}
+            columns={[
+              'Identity',
+              'Assignments',
+              'Development decision',
+              'Split / run state',
+              'Observed metrics',
+            ]}
           >
             {campaign.plan.candidates.map((c) => (
               <tr key={c.identity}>
@@ -175,6 +195,33 @@ export function CampaignPanel({ definition }: { definition: ExperimentRecord }) 
                   ))}
                 </td>
                 <td>{campaign.selection?.decisions[c.identity] ?? 'Not selected yet'}</td>
+                <td>
+                  {campaign.runs
+                    .filter((r) => r.configuration_identity === c.identity)
+                    .map((r) => (
+                      <div key={r.id}>
+                        {r.purpose} · <StatusBadge status={r.status} />
+                      </div>
+                    ))}
+                  {!campaign.runs.some((r) => r.configuration_identity === c.identity) && '—'}
+                </td>
+                <td>
+                  {campaign.runs
+                    .filter((r) => r.configuration_identity === c.identity && r.observation)
+                    .map((r) => (
+                      <div key={r.id}>
+                        <strong>{r.purpose}</strong>
+                        {Object.entries(r.observation!.metrics).map(([k, v]) => (
+                          <div key={k}>
+                            {k}: {v ?? '—'}
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  {!campaign.runs.some(
+                    (r) => r.configuration_identity === c.identity && r.observation,
+                  ) && '—'}
+                </td>
               </tr>
             ))}
           </DataTable>

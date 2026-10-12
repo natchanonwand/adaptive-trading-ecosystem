@@ -244,3 +244,36 @@ it('shows list storage failures without claiming readiness', async () => {
   expect(await screen.findByRole('alert')).toHaveTextContent('EXPERIMENT_STORAGE_UNAVAILABLE');
   expect(screen.queryByText(/READY for explicit freeze/)).not.toBeInTheDocument();
 });
+
+it('offers only qualified metrics while preserving an unsupported saved declaration', async () => {
+  await open();
+  const select = screen.getByLabelText('objectives 1 metric') as HTMLSelectElement;
+  expect(select.value).toBe('RETURN_R');
+  expect(Array.from(select.options).find((o) => o.value === 'RETURN_R')?.disabled).toBe(true);
+  expect(
+    Array.from(select.options)
+      .filter((o) => !o.disabled && o.value)
+      .map((o) => o.value),
+  ).toEqual(['NET_PROFIT', 'TRADE_COUNT', 'PROFIT_FACTOR']);
+  expect(fetcher).toHaveBeenCalledTimes(1);
+});
+
+it('starts with no invented objective metric or parameter value', async () => {
+  render(<ExperimentsPanel detail={detail} />);
+  await waitFor(() => expect(screen.getByLabelText('Review saved definition')).not.toBeDisabled());
+  expect(screen.getByLabelText('objectives 1 metric')).toHaveValue('');
+  expect(screen.getByLabelText('parameter space parameters 1 baseline')).toHaveValue('');
+});
+
+it('preserves a saved cost-modeled declaration but does not offer it as qualified', async () => {
+  await open({
+    ...draft,
+    definition: { ...draft.definition, evidence_classification: 'EXPLORATORY_COST_MODELED' },
+  });
+  const select = screen.getByLabelText('evidence classification') as HTMLSelectElement;
+  expect(select.value).toBe('EXPLORATORY_COST_MODELED');
+  expect(
+    Array.from(select.options).find((o) => o.value === 'EXPLORATORY_COST_MODELED')?.disabled,
+  ).toBe(true);
+  expect(fetcher).toHaveBeenCalledTimes(1);
+});

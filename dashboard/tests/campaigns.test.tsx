@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { CampaignPanel } from '../src/workbench/CampaignPanel';
 import type { ExperimentRecord } from '../src/workbench/ExperimentsPanel';
@@ -56,17 +56,16 @@ it('creates only a plan with frozen definition identity', async () => {
   });
   expect(fetcher).toHaveBeenCalledTimes(2);
 });
-it('requires explicit bounded execution confirmation', async () => {
+it('keeps native start unavailable without campaign authorization in UI-2', async () => {
   await inspect();
   const start = screen.getByRole('button', {
     name: 'Start / resume campaign',
   }) as HTMLButtonElement;
   expect(start.disabled).toBe(true);
-  fireEvent.click(screen.getByRole('checkbox'));
-  fetcher.mockResolvedValueOnce(ok({ ...campaign, status: 'RUNNING' }));
   fireEvent.click(start);
-  await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(2));
-  expect(fetcher.mock.calls[1]![0]).toBe('/workbench-api/campaigns/campaign/start');
+  expect(fetcher).toHaveBeenCalledTimes(1);
+  expect(screen.queryByRole('checkbox')).toBeNull();
+  expect(screen.getByText(/Execution authorization is not supplied/)).toBeTruthy();
 });
 it('shows budget, progress and deterministic selection separately', async () => {
   await inspect({
@@ -133,4 +132,37 @@ it('refreshes with GET and never schedules a run', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Refresh campaign' }));
   await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(2));
   expect(fetcher.mock.calls[1]![1].method).toBe('GET');
+});
+
+it('treats no campaign as an intentional state without fake progress', async () => {
+  await inspect(null);
+  expect(screen.getByText(/No campaign exists for this frozen definition/)).toBeTruthy();
+  expect(screen.getByText(/Runner qualified/)).toBeTruthy();
+  expect(screen.queryByRole('meter')).toBeNull();
+  expect(fetcher).toHaveBeenCalledTimes(1);
+});
+
+it('links actual candidate assignments, split outcomes and measured zero metrics', async () => {
+  await inspect({
+    ...campaign,
+    status: 'COMPLETE',
+    runs: [
+      {
+        id: 'run',
+        configuration_identity: 'b'.repeat(64),
+        purpose: 'DEVELOPMENT',
+        status: 'COMPLETE',
+        observation: {
+          metrics: { TRADE_COUNT: '0', PROFIT_FACTOR: null },
+          evidence_identity: 'e',
+          result_identity: 'r',
+        },
+      },
+    ],
+  });
+  const table = screen.getByRole('table', { name: 'Frozen candidate configurations' });
+  expect(within(table).getByText('Period = 10')).toBeTruthy();
+  expect(within(table).getByText('TRADE_COUNT: 0')).toBeTruthy();
+  expect(within(table).getByText('PROFIT_FACTOR: —')).toBeTruthy();
+  expect(within(table).getByText('COMPLETE')).toBeTruthy();
 });

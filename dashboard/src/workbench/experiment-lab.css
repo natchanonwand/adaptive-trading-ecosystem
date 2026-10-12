@@ -1,0 +1,127 @@
+.experiment-lab {
+  min-width: 0;
+}
+.lab-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 18px;
+  margin-bottom: 24px;
+}
+.lab-overview > section:nth-child(-n + 3) {
+  grid-column: 1 / -1;
+}
+.lab-header-facts,
+.lab-budget-grid,
+.lab-split-register {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+  gap: 16px;
+}
+.lab-header-facts > div,
+.lab-split-register > div,
+.lab-budget-meter {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--border-default);
+}
+.lab-header-facts dd {
+  margin: 8px 0 0;
+  overflow-wrap: anywhere;
+}
+.lab-protocol {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding: 0;
+  gap: 16px;
+  list-style: none;
+}
+.lab-protocol li {
+  padding: 16px;
+  border-top: 3px solid var(--accent-primary);
+  background: var(--bg-panel);
+}
+.lab-protocol strong,
+.lab-protocol span,
+.lab-split-register span,
+.lab-split-register small {
+  display: block;
+  margin-bottom: 8px;
+}
+.lab-protocol strong,
+.lab-budget-meter dd {
+  font-family: var(--font-mono);
+}
+.lab-protocol .lab-oos {
+  border: 2px solid var(--accent-primary);
+}
+.lab-budget-meter h4 {
+  margin: 0 0 14px;
+}
+.lab-budget-meter dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.lab-budget-meter dt {
+  font-size: 12px;
+  text-transform: uppercase;
+}
+.lab-budget-meter dd {
+  margin: 8px 0;
+  font-size: 22px;
+}
+.lab-budget-meter meter {
+  display: block;
+  width: 100%;
+  height: 20px;
+  accent-color: var(--accent-primary);
+}
+.lab-budget-meter meter::-webkit-meter-bar {
+  border-radius: 0;
+  border: 1px solid var(--accent-primary);
+  background: var(--bg-panel);
+}
+.lab-budget-meter meter::-webkit-meter-optimum-value {
+  background: var(--accent-primary);
+}
+.lab-editor {
+  margin-block: 22px;
+  border: 1px solid var(--accent-primary);
+  padding: 16px;
+}
+.lab-editor summary {
+  cursor: pointer;
+  padding: 12px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+.lab-editor summary:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 3px;
+}
+.lab-editor fieldset {
+  min-width: 0;
+  margin-block: 14px;
+}
+.lab-editor fieldset fieldset {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 12px;
+}
+.lab-editor fieldset fieldset > fieldset,
+.lab-editor .wb-evidence {
+  grid-column: 1 / -1;
+}
+.lab-empty {
+  border-left: 3px solid var(--accent-primary);
+  padding: 12px 18px;
+}
+@media (max-width: 850px) {
+  .lab-overview,
+  .lab-protocol {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .lab-editor {
+    padding: 8px;
+  }
+}

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { CampaignPanel } from './CampaignPanel';
+import { ExperimentLab, qualifiedMetrics } from './ExperimentLab';
 import type { Detail } from './api';
+import './experiment-lab.css';
 
 type Value = string | number | boolean | null | Value[] | { [key: string]: Value };
 type Definition = { [key: string]: Value };
@@ -31,24 +33,12 @@ const parameter = {
   ordered: true,
 };
 const objective = {
-  metric: 'RETURN_R',
+  metric: '',
   direction: 'MAXIMIZE',
   definition: '',
   null_policy: 'INELIGIBLE',
 };
 const constraint = { metric: 'TRADE_COUNT', comparator: 'AT_LEAST', threshold: '', rationale: '' };
-const metrics = [
-  'RETURN_R',
-  'NET_PROFIT',
-  'PROFIT_FACTOR',
-  'EXPECTANCY',
-  'DRAWDOWN_ADJUSTED_RETURN',
-  'STABILITY',
-  'MAX_DRAWDOWN_PCT',
-  'TRADE_COUNT',
-  'ACTIVITY',
-  'CONCENTRATION',
-];
 const options: Record<string, string[]> = {
   kind: ['INTEGER', 'DECIMAL', 'BOOLEAN', 'CATEGORY'],
   provenance: [
@@ -59,11 +49,11 @@ const options: Record<string, string[]> = {
   ],
   method: ['GRID', 'RANDOM_SEEDED'],
   early_rejection: ['NONE', 'PRE_REGISTERED_HARD_CONSTRAINTS'],
-  metric: metrics,
+  metric: qualifiedMetrics,
   direction: ['MAXIMIZE', 'MINIMIZE'],
   comparator: ['AT_LEAST', 'AT_MOST'],
   evaluation_method: ['PARETO_REVIEW', 'DECLARED_LEXICOGRAPHIC'],
-  evidence_classification: ['EXPLORATORY_GROSS', 'EXPLORATORY_COST_MODELED'],
+  evidence_classification: ['EXPLORATORY_GROSS'],
 };
 const fixed = new Set([
   'schema_version',
@@ -197,6 +187,12 @@ function Fields({
           disabled={disabled}
           onChange={(e) => change(e.target.value)}
         >
+          {name === 'metric' && <option value="">Select a qualified metric</option>}
+          {value && !options[name].includes(String(value)) && (
+            <option value={String(value)} disabled>
+              {String(value)} — unqualified (preserved)
+            </option>
+          )}
           {options[name].map((v) => (
             <option key={v}>{v}</option>
           ))}
@@ -332,7 +328,7 @@ export function ExperimentsPanel({ detail }: { detail: Detail }) {
     }
   }
   return (
-    <div>
+    <div className="experiment-lab">
       <p>
         Phase 5C.0: define, review and freeze the experiment contract. Frozen definitions expose a
         separate Phase 5C.1 controlled campaign panel; execution requires explicit authorization.
@@ -380,6 +376,11 @@ export function ExperimentsPanel({ detail }: { detail: Detail }) {
             ? ' · Unsaved changes'
             : ''}
       </p>
+      <p className="lab-empty">
+        No real campaign execution is authorized in UI-2. Review and register contracts without
+        starting the runner.
+      </p>
+      <ExperimentLab definition={form} record={record} dirty={dirty} />
       <p>
         Saving revisions creates a new immutable identity; it never overwrites a saved definition.
         Explicit parameter provenance is required; hidden tester-default inputs are not inferred.
@@ -388,7 +389,6 @@ export function ExperimentsPanel({ detail }: { detail: Detail }) {
         <dl className="wb-facts">
           {Object.entries({
             'Definition ID': record.id,
-            'Definition identity': record.identity,
             'Parameter space identity': record.parameter_space_identity,
             'Split plan identity': record.split_plan_identity,
             'Campaign contract identity (no execution)': record.campaign_identity,
@@ -408,57 +408,60 @@ export function ExperimentsPanel({ detail }: { detail: Detail }) {
           identity.
         </p>
       )}
-      <fieldset disabled={busy || loading || frozen}>
-        <legend>Experiment definition</legend>
-        <label>
-          Existing baseline configuration
-          <select
-            value={String(form.baseline_configuration_id)}
-            onChange={(e) => {
-              const config = detail.configurations?.find(
-                (c) => c.specification.configuration_id === e.target.value,
-              );
-              setForm({
-                ...form,
-                baseline_configuration_id: e.target.value,
-                baseline_identity: config?.configuration_identity ?? '',
-              });
-              setDirty(true);
-              setConfirmed(false);
-            }}
-          >
-            <option value="">Select an existing configuration</option>
-            {detail.configurations?.map((c) => (
-              <option
-                key={c.specification.configuration_id}
-                value={c.specification.configuration_id}
-              >
-                {c.specification.configuration_id}
-              </option>
-            ))}
-          </select>
-        </label>
-        <p>
-          Numeric parameter domains require min/max/step OR choices. For BOOLEAN/CATEGORY, enable
-          categorical; numeric parameters require ordered. Dates are half-open: start inclusive, end
-          exclusive. Budget values must be positive; seeded random requires a seed and GRID requires
-          an empty seed.
-        </p>
-        {Object.entries(form).map(([key, value]) => (
-          <Fields
-            key={key}
-            name={key}
-            path={key}
-            value={value}
-            frozen={!!frozen}
-            change={(next) => {
-              setForm({ ...form, [key]: next });
-              setDirty(true);
-              setConfirmed(false);
-            }}
-          />
-        ))}
-      </fieldset>
+      <details className="lab-editor" open={!frozen}>
+        <summary>{frozen ? 'Inspect immutable contract fields' : 'Draft protocol editor'}</summary>
+        <fieldset disabled={busy || loading || frozen}>
+          <legend>Experiment definition</legend>
+          <label>
+            Existing baseline configuration
+            <select
+              value={String(form.baseline_configuration_id)}
+              onChange={(e) => {
+                const config = detail.configurations?.find(
+                  (c) => c.specification.configuration_id === e.target.value,
+                );
+                setForm({
+                  ...form,
+                  baseline_configuration_id: e.target.value,
+                  baseline_identity: config?.configuration_identity ?? '',
+                });
+                setDirty(true);
+                setConfirmed(false);
+              }}
+            >
+              <option value="">Select an existing configuration</option>
+              {detail.configurations?.map((c) => (
+                <option
+                  key={c.specification.configuration_id}
+                  value={c.specification.configuration_id}
+                >
+                  {c.specification.configuration_id}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p>
+            Numeric parameter domains require min/max/step OR choices. For BOOLEAN/CATEGORY, enable
+            categorical; numeric parameters require ordered. Dates are half-open: start inclusive,
+            end exclusive. Budget values must be positive; seeded random requires a seed and GRID
+            requires an empty seed.
+          </p>
+          {Object.entries(form).map(([key, value]) => (
+            <Fields
+              key={key}
+              name={key}
+              path={key}
+              value={value}
+              frozen={!!frozen}
+              change={(next) => {
+                setForm({ ...form, [key]: next });
+                setDirty(true);
+                setConfirmed(false);
+              }}
+            />
+          ))}
+        </fieldset>
+      </details>
       {error && <p role="alert">{error}</p>}
       {busy && <p role="status">Saving definition…</p>}
       {!frozen && (
