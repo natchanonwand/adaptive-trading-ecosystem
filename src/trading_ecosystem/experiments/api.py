@@ -9,7 +9,7 @@ from sqlalchemy import Engine
 from sqlalchemy.exc import SQLAlchemyError
 
 from trading_ecosystem.experiments import store
-from trading_ecosystem.experiments.contracts import ExperimentDefinition
+from trading_ecosystem.experiments.reference_contract import parse_definition
 from trading_ecosystem.tester.api import BaselineHandler, BaselineServer
 from trading_ecosystem.tester.service import Service
 
@@ -63,7 +63,7 @@ class ExperimentHandler(BaselineHandler):
             status = 200
             with self.server.engine.begin() as conn:
                 if self.path == "/workbench-api/experiments":
-                    value: object = store.save(conn, ExperimentDefinition.model_validate(body))
+                    value: object = store.save(conn, parse_definition(body))
                     status = 201
                 else:
                     parts = self.path.split("/")

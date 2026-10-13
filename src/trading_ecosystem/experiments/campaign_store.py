@@ -8,7 +8,8 @@ from sqlalchemy import Column, Connection, ForeignKey, String, Table, select, up
 from sqlalchemy.dialects.postgresql import JSONB, insert
 
 from trading_ecosystem.experiments import campaigns, store
-from trading_ecosystem.experiments.contracts import ExperimentDefinition, digest
+from trading_ecosystem.experiments.contracts import digest
+from trading_ecosystem.experiments.reference_contract import ReferenceDefinition, parse_definition
 from trading_ecosystem.workbench.store import metadata
 
 records = Table(
@@ -43,7 +44,7 @@ def read(conn: Connection, key: UUID, lock: bool = False) -> dict[str, Any]:
     body: dict[str, Any] = dict(payload["content"])
     if payload["identity"] != digest(body) or body["id"] != str(key):
         raise ValueError("CAMPAIGN_LEDGER_IDENTITY_MISMATCH")
-    definition = ExperimentDefinition.model_validate(body["definition"])
+    definition = parse_definition(body["definition"])
     record = store.detail(conn, UUID(body["definition_id"]))
     if record["state"] != "FROZEN" or record["identity"] != definition.identity:
         raise ValueError("FROZEN_DEFINITION_CHANGED")
@@ -63,7 +64,7 @@ def create(conn: Connection, definition_id: UUID, expected_identity: str) -> dic
         raise ValueError("FROZEN_DEFINITION_REQUIRED")
     if record["identity"] != expected_identity:
         raise ValueError("EXPERIMENT_IDENTITY_MISMATCH")
-    d = ExperimentDefinition.model_validate(record["definition"])
+    d = parse_definition(record["definition"])
     store.validate_baseline(conn, d)
     existing = conn.execute(
         select(records.c.id).where(records.c.definition_id == str(definition_id))
@@ -79,6 +80,8 @@ def create(conn: Connection, definition_id: UUID, expected_identity: str) -> dic
         "failure_policy": "CONTINUE_WITHOUT_RETRY",
         "execution_budget_policy": "CONSERVATIVE_RESERVATION_BEFORE_HANDOFF",
     }
+    if isinstance(d, ReferenceDefinition):
+        plan["selection_policy"] = "TOP_2_NET_PROFIT_DESC_IDENTITY_ASC_ACTIVITY_GE_10"
     identity = digest(plan)
     body: dict[str, Any] = {
         "id": str(uuid5(NAMESPACE_URL, identity)),

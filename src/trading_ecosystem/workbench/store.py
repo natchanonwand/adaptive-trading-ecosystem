@@ -123,7 +123,7 @@ def register_artifact(
 
 
 def create_project(conn: Connection, root: Path, request: CreateProject) -> Project:
-    if request.source_type != SourceType.EXTERNAL_EA:
+    if request.source_type not in {SourceType.EXTERNAL_EA, SourceType.PROJECT_OWNED_REFERENCE}:
         raise ValueError("SOURCE_TYPE_COMING_SOON")
     candidate_input = request.candidate
     if candidate_input.catalog_id is not None and candidate_input.catalog_id not in {

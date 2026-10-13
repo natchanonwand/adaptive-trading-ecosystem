@@ -5,13 +5,14 @@ from typing import Any
 
 from trading_ecosystem.experiments.contracts import ExperimentDefinition, digest
 from trading_ecosystem.experiments.governance import candidate_at, evaluate_constraints
+from trading_ecosystem.experiments.reference_contract import ReferenceDefinition, parse_definition
 
 PROTOCOL = "CONTROLLED_DEVELOPMENT_VALIDATION_V1"
 
 
 def generate(definition: ExperimentDefinition) -> list[dict[str, Any]]:
     """Reuse registered ordinal sampling; duplicates consume slots, never replenish them."""
-    definition = ExperimentDefinition.model_validate_json(definition.model_dump_json())
+    definition = parse_definition(definition)
     candidates: list[dict[str, Any]] = []
     seen: set[str] = set()
     for ordinal in range(definition.budget.maximum_configurations):
@@ -83,7 +84,9 @@ def select_development(
             raise ValueError("NONFINITE_OBJECTIVE")
         eligible.append((key, scores))
         decisions[key] = "ELIGIBLE_NOT_SELECTED"
-    if definition.evaluation_method == "DECLARED_LEXICOGRAPHIC":
+    if isinstance(definition, ReferenceDefinition):
+        selected = [key for key, _ in sorted(eligible, key=lambda item: (-item[1][0], item[0]))[:2]]
+    elif definition.evaluation_method == "DECLARED_LEXICOGRAPHIC":
         best = max((scores for _, scores in eligible), default=())
         selected = [key for key, scores in eligible if scores == best]
     else:

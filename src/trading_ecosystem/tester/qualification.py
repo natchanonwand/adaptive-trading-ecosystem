@@ -68,7 +68,7 @@ def environment_proof(pinned: TerminalBinding, root: Path) -> dict[str, Any]:
 
 
 def ingestion(provenance: str) -> str:
-    if provenance == "USER_SUPPLIED_AUTHORIZED":
+    if provenance in {"USER_SUPPLIED_AUTHORIZED", "PROJECT_SOURCE"}:
         return "USER_SUPPLIED_EX5"
     if provenance == "MARKETPLACE_AUTHORIZED":
         return "AUTHORIZED_MT5_INSTALLED_EA"

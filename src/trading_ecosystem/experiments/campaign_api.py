@@ -7,11 +7,12 @@ from uuid import UUID
 
 from sqlalchemy.exc import SQLAlchemyError
 
+from trading_ecosystem.experiments import authorization
 from trading_ecosystem.experiments import campaign_store as ledger
 from trading_ecosystem.experiments.api import ExperimentHandler, ExperimentServer
 from trading_ecosystem.experiments.baseline_boundary import BaselineBoundary
 from trading_ecosystem.experiments.campaign_runner import Runner
-from trading_ecosystem.experiments.contracts import ExperimentDefinition
+from trading_ecosystem.experiments.reference_contract import parse_definition
 
 
 class CampaignHandler(ExperimentHandler):
@@ -37,6 +38,11 @@ class CampaignHandler(ExperimentHandler):
                     if len(parts) != 4 or parsed.query:
                         raise ValueError("INVALID_ROUTE")
                     value = ledger.read(conn, UUID(parts[3]))
+                items = value.get("items", [value])
+                for item in items:
+                    item["authorization_review"] = authorization.review(
+                        conn, UUID(item["id"]), self.server.artifacts, self.server.service.root
+                    )
             self.send(200, value)
         except ValueError as exc:
             self.send(400, {"error": str(exc)})
@@ -74,10 +80,27 @@ class CampaignHandler(ExperimentHandler):
                 status = 201
             else:
                 parts = self.path.split("/")
-                if len(parts) != 5 or body != {"confirmed": True}:
+                if len(parts) != 5:
                     raise ValueError("EXPLICIT_ACTION_CONFIRMATION_REQUIRED")
                 key, action = UUID(parts[3]), parts[4]
-                if action == "start":
+                if action == "authorize":
+                    if (
+                        set(body) != {"confirmed", "review_identity"}
+                        or body["confirmed"] is not True
+                    ):
+                        raise ValueError("EXPLICIT_ACTION_CONFIRMATION_REQUIRED")
+                    with self.server.engine.begin() as conn:
+                        value = authorization.authorize(
+                            conn,
+                            key,
+                            self.server.artifacts,
+                            self.server.service.root,
+                            body["review_identity"],
+                            True,
+                        )
+                elif body != {"confirmed": True}:
+                    raise ValueError("EXPLICIT_ACTION_CONFIRMATION_REQUIRED")
+                elif action == "start":
                     self.server.start_campaign(key)
                     with self.server.engine.connect() as conn:
                         value = ledger.read(conn, key)
@@ -110,7 +133,8 @@ class CampaignServer(ExperimentServer):
         boundary = BaselineBoundary(self.service)
         with self.engine.connect() as conn:
             body = ledger.read(conn, key)
-        boundary.validate(ExperimentDefinition.model_validate(body["definition"]))
+            authorization.require(conn, key, self.artifacts, self.service.root, "DEVELOPMENT")
+        boundary.validate(parse_definition(body["definition"]))
 
         def work() -> None:
             try:

@@ -18,6 +18,7 @@ from trading_ecosystem.workbench import store as onboarding
 from trading_ecosystem.workbench.contracts import Text
 
 Provenance = Literal[
+    "PROJECT_SOURCE",
     "UNKNOWN",
     "USER_SUPPLIED_AUTHORIZED",
     "FREE_VENDOR_DISTRIBUTION",

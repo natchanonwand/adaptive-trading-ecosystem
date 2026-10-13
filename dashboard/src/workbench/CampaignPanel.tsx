@@ -3,8 +3,10 @@ import { Button, DataTable, MetricCard, MetricStrip, RetroPanel, StatusBadge } f
 import { CopyValue } from './ResearchSurfaces';
 import type { ExperimentRecord } from './ExperimentsPanel';
 import { BudgetMeter } from './ExperimentLab';
+import { CampaignAuthorization, type AuthorizationReview } from './CampaignAuthorization';
 
 type Campaign = {
+  authorization_review?: AuthorizationReview;
   id: string;
   status: string;
   consumed_executions: number;
@@ -74,6 +76,19 @@ export function CampaignPanel({ definition }: { definition: ExperimentRecord }) 
       setBusy(false);
     }
   }
+  async function authorize(identity: string) {
+    if (!campaign) return;
+    setBusy(true);
+    setError('');
+    try {
+      await api('/' + campaign.id + '/authorize', { confirmed: true, review_identity: identity });
+      await inspect();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
     <RetroPanel
       title="Controlled campaign"
@@ -83,11 +98,15 @@ export function CampaignPanel({ definition }: { definition: ExperimentRecord }) 
         Creating a plan does not execute it. DEVELOPMENT selection is frozen before VALIDATION.
         LOCKED_OOS is unavailable.
       </p>
-      <p>Runner qualified. No controlled campaign has been authorized for UI-2.</p>
-      <p>
-        Execution authorization is not supplied by the current API. Start / resume remains
-        unavailable; inspecting evidence does not authorize execution.
-      </p>
+      {!campaign?.authorization_review && (
+        <p>Runner qualified. No controlled campaign has been authorized for UI-2.</p>
+      )}
+      {!campaign?.authorization_review && (
+        <p>
+          Execution authorization is not supplied by the current API. Start / resume remains
+          unavailable; inspecting evidence does not authorize execution.
+        </p>
+      )}
       {!loaded ? (
         <Button disabled={busy} onClick={() => void inspect()}>
           Inspect campaigns
@@ -161,7 +180,16 @@ export function CampaignPanel({ definition }: { definition: ExperimentRecord }) 
           </Button>
           {['CREATED', 'RUNNING'].includes(campaign.status) && (
             <>
-              <Button disabled title="No real campaign execution is authorized in UI-2">
+              <Button
+                disabled={
+                  busy ||
+                  campaign.authorization_review?.state !== 'AUTHORIZED' ||
+                  !campaign.authorization_review?.start_eligible ||
+                  campaign.cancel_requested
+                }
+                title="Requires valid backend authorization and ready research environment"
+                onClick={() => void action('/' + campaign.id + '/start', { confirmed: true })}
+              >
                 Start / resume campaign
               </Button>
               <Button
@@ -225,6 +253,14 @@ export function CampaignPanel({ definition }: { definition: ExperimentRecord }) 
               </tr>
             ))}
           </DataTable>
+          {campaign.authorization_review?.review_identity && (
+            <CampaignAuthorization
+              key={campaign.authorization_review.review_identity}
+              review={campaign.authorization_review}
+              authorize={authorize}
+              busy={busy}
+            />
+          )}
           <CopyValue label="development selection identity" value={campaign.selection_identity} />
           <DataTable
             caption="Campaign run outcomes"

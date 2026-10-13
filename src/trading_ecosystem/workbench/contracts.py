@@ -29,6 +29,7 @@ def project_name(value: str) -> str:
 
 
 class SourceType(StrEnum):
+    PROJECT_OWNED_REFERENCE = "PROJECT_OWNED_REFERENCE"
     EXTERNAL_EA = "EXTERNAL_EA"
     STRATEGY_IDEA = "STRATEGY_IDEA"
     QUANT_FORMULA = "QUANT_FORMULA"

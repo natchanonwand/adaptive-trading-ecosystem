@@ -8,6 +8,7 @@ from sqlalchemy import Column, Connection, ForeignKey, String, Table, select, up
 from sqlalchemy.dialects.postgresql import JSONB, insert
 
 from trading_ecosystem.experiments.contracts import ExperimentCampaign, ExperimentDefinition
+from trading_ecosystem.experiments.reference_contract import parse_definition
 from trading_ecosystem.tester import readiness
 from trading_ecosystem.tester import store as baseline
 from trading_ecosystem.workbench.store import metadata
@@ -56,7 +57,7 @@ def detail(conn: Connection, definition_id: UUID, lock: bool = False) -> dict[st
         raise ValueError("EXPERIMENT_DEFINITION_NOT_FOUND")
     if row["state"] not in {"DRAFT", "FROZEN"}:
         raise ValueError("INVALID_EXPERIMENT_STATE")
-    definition = ExperimentDefinition.model_validate(row["body"])
+    definition = parse_definition(row["body"])
     if str(uuid5(NAMESPACE_URL, definition.identity)) != row["id"]:
         raise ValueError("EXPERIMENT_IDENTITY_MISMATCH")
     return {
@@ -110,7 +111,7 @@ def audit(conn: Connection, key: UUID, event: str, identity: str) -> None:
 
 def freeze(conn: Connection, definition_id: UUID) -> dict[str, Any]:
     record = detail(conn, definition_id, lock=True)
-    validate_baseline(conn, ExperimentDefinition.model_validate(record["definition"]))
+    validate_baseline(conn, parse_definition(record["definition"]))
     if record["state"] == "FROZEN":
         return record
     audit(conn, definition_id, "DEFINITION_FROZEN", record["identity"])

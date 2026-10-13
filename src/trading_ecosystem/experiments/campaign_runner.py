@@ -10,6 +10,7 @@ from sqlalchemy import Engine, text
 from trading_ecosystem.experiments import campaign_store as ledger
 from trading_ecosystem.experiments import campaigns, store
 from trading_ecosystem.experiments.contracts import ExperimentDefinition, digest
+from trading_ecosystem.experiments.reference_contract import ReferenceDefinition, parse_definition
 
 LOCK_KEY = 541001
 TERMINAL = {"COMPLETE", "PARTIAL", "NO_ELIGIBLE_SELECTION", "BUDGET_EXHAUSTED", "CANCELLED"}
@@ -53,9 +54,28 @@ class Runner:
             body = ledger.read(conn, key, True)
             if body["status"] in TERMINAL:
                 return
-            d = ExperimentDefinition.model_validate(body["definition"])
+            d = parse_definition(body["definition"])
             store.validate_baseline(conn, d)
             self.boundary.validate(d)
+            if isinstance(d, ReferenceDefinition):
+                from trading_ecosystem.experiments.authorization import verify_capability
+
+                grant = body.get("execution_authorization", {})
+                verify_capability(
+                    body, grant.get("content", {}).get("environment", {}), "DEVELOPMENT"
+                )
+                from trading_ecosystem.experiments.baseline_boundary import BaselineBoundary
+
+                if isinstance(self.boundary, BaselineBoundary):
+                    from trading_ecosystem.experiments.authorization import require
+
+                    require(
+                        conn,
+                        key,
+                        self.boundary.service.artifacts,
+                        self.boundary.service.root,
+                        "DEVELOPMENT",
+                    )
             if body["started_at"] is None:
                 now = datetime.now(UTC)
                 body["started_at"] = now.isoformat()
@@ -69,7 +89,7 @@ class Runner:
             recovered = False
             with self.engine.begin() as conn:
                 body = ledger.read(conn, key, True)
-                d = ExperimentDefinition.model_validate(body["definition"])
+                d = parse_definition(body["definition"])
                 deadline = datetime.fromisoformat(body["deadline"])
                 pending = next((r for r in body["runs"] if r["status"] == "RESERVED"), None)
                 if pending:
@@ -142,6 +162,8 @@ class Runner:
                         "status": "RESERVED",
                         "observation": None,
                     }
+                    if isinstance(d, ReferenceDefinition):
+                        run["campaign_id"] = body["id"]
                     body["runs"].append(run)
                     body["consumed_executions"] += 1
                     ledger.event(body, "EXECUTION_RESERVED", run_id=run["id"])

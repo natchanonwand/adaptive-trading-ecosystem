@@ -98,6 +98,19 @@ class BaselineBoundary:
         self.validate(definition)
         if run["purpose"] not in {"DEVELOPMENT", "VALIDATION"}:
             raise ValueError("LOCKED_OOS_UNAVAILABLE")
+        from trading_ecosystem.experiments.reference_contract import ReferenceDefinition
+
+        if isinstance(definition, ReferenceDefinition):
+            from trading_ecosystem.experiments import authorization
+
+            with self.service.engine.connect() as conn:
+                authorization.require(
+                    conn,
+                    UUID(run["campaign_id"]),
+                    self.service.artifacts,
+                    self.service.root,
+                    run["purpose"],
+                )
         split = definition.split_plan.splits[0 if run["purpose"] == "DEVELOPMENT" else 1]
         if (run["start"], run["end"], run["split_identity"]) != (
             str(split.start),
