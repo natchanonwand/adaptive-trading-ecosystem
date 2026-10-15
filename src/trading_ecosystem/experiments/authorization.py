@@ -123,7 +123,29 @@ def review(conn: Connection, key: UUID, artifacts: Path, root: Path) -> dict[str
         "start_eligible": authorized and blocker is None,
         "authorization_eligible": blocker is None,
         "blocker": blocker,
+        "environment_qualification": qualification_view(body, root),
     }
+
+
+def qualification_view(body: dict[str, Any], root: Path) -> dict[str, str]:
+    from trading_ecosystem.tester.account_context_qualification import qualified_evidence
+
+    target = root.parent / "phase5_c2d"
+    try:
+        stored = json.loads((target / "qualification.json").read_bytes())
+        actual = qualified_evidence((target / "main-mode-probe").resolve())
+        binding = actual["content"]["binding"]["content"]
+        if stored != actual or binding["candidate_id"] != body["definition"]["candidate_id"]:
+            raise ValueError("QUALIFICATION_BINDING_MISMATCH")
+        if binding["artifact_sha256"] != body["definition"].get("canonical_ex5_sha256"):
+            raise ValueError("QUALIFICATION_ARTIFACT_MISMATCH")
+        return {
+            "state": actual["content"]["assessment"]["environment"],
+            "account_context": actual["content"]["assessment"]["account_context"]["state"],
+            "identity": actual["identity"],
+        }
+    except (ValueError, OSError, KeyError):
+        return {"state": "UNQUALIFIED", "account_context": "UNVERIFIED"}
 
 
 def authorize(

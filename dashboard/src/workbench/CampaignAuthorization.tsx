@@ -8,6 +8,7 @@ export type AuthorizationReview = {
   start_eligible: boolean;
   authorization_eligible?: boolean;
   blocker?: string | null;
+  environment_qualification?: { state: string; account_context: string; identity?: string };
 };
 
 export function CampaignAuthorization({
@@ -33,6 +34,19 @@ export function CampaignAuthorization({
         ordered candidate identities before confirming.
       </p>
       <StatusBadge status={review.state} />
+      {review.environment_qualification && (
+        <div>
+          <p>ACCOUNT CONTEXT: {review.environment_qualification.account_context}</p>
+          <p>EXECUTION ENVIRONMENT: {review.environment_qualification.state}</p>
+          <p>Qualification evidence does not authorize campaign Start.</p>
+          {review.environment_qualification.identity && (
+            <CopyValue
+              label="environment qualification identity"
+              value={review.environment_qualification.identity}
+            />
+          )}
+        </div>
+      )}
       {review.review_identity && (
         <CopyValue label="authorization review identity" value={review.review_identity} />
       )}
